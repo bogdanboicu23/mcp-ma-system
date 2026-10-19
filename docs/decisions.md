@@ -14,3 +14,9 @@ Short record of what was decided and why. Useful later for report sections 2.1 a
 | 8 | 2026-10-19 | Topologies: hub-and-spoke, coder-reviewer, sequential (last, optional) | Chosen by the author; sequential is dropped first if the schedule slips. |
 | 9 | 2026-10-19 | Tool-exposure ablation (full vs. role-restricted tools) on hub-and-spoke | Shows how much of the MCP cost is a tool-design effect (H2). |
 | 10 | 2026-10-19 | Task structure labeled from SWE-bench gold patches, plus a small synthetic suite | Realistic main result with a cleaner sanity check (RQ3). |
+| 11 | 2026-10-19 | Six tools defined once in `ToolCatalog`; the direct host and the future MCP server both use them | Any cost difference between config A and B must come from MCP, not from different tool text or behaviour. |
+| 12 | 2026-10-19 | Tool descriptions kept short | They are sent on every request; their size is part of the MCP-layer cost that RQ2 measures. |
+| 13 | 2026-10-19 | `edit_file` is done as exact-match replace (must match once), implemented in C# not in the shell | Same match rules everywhere; preserves line endings and missing final newlines; clear errors help the model retry. |
+| 14 | 2026-10-19 | Task containers run with `--network none`, memory and CPU limits, removed afterwards | The isolation the report promises for MCP tools; also keeps runs from affecting each other. |
+| 15 | 2026-10-19 | Commands run under the container's own `timeout` (exit 124) | Killing `docker exec` locally does not stop the process inside the container; a hung test would distort later timings. |
+| 16 | 2026-10-19 | Non-zero exit codes are normal tool output, not tool errors | Failing tests are information for the agent; `IsError` is reserved for bad arguments, missing files and timeouts. |

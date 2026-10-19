@@ -31,12 +31,17 @@ dotnet run --project src/Runner -- live    # real call to claude-haiku-5-5, well
 ## Status
 
 Done: agent loop, context policy (80k cap, same for all systems), run budget with the Haiku 5.5 100k pricing tier,
-JSONL call log, `HttpClient` Messages API client, scripted model for dry runs, 9 unit tests.
+JSONL call log, `HttpClient` Messages API client, scripted model for dry runs, the shared tool catalog (6 tools),
+the direct tool host for config A (`ContainerToolHost`), command executors (local for tests, Docker for experiments),
+throw-away Docker containers (no network, memory/CPU limits), git patch extraction, 22 unit tests.
 
-Not done yet: MCP server and MCP-backed tool host, direct tool host for config A, Docker task containers,
-SWE-bench loader and evaluator hand-off, topologies, token attribution by source (RQ2).
+Not done yet: MCP server and MCP-backed tool host, SWE-bench loader and evaluator hand-off, the `run` command that
+ties a task, a container and the agent loop together, topologies, token attribution by source (RQ2).
 
 Caveats:
+- `DockerExecutor` / `DockerContainer` need a Docker daemon and have not been run yet; they are tested only for the
+  arguments they build. Tool behaviour itself is tested against a local folder with bash (macOS/Linux; on Windows run
+  the tests inside WSL).
 - Pricing in `Pricing.cs` comes from secondary reporting. Verify it on Anthropic's pricing page.
 - `AnthropicHttpClient` follows the documented API but has not been run against the live API yet. Run `live` once.
 - The context-size estimate is a character heuristic. Compare `estimatedPromptTokens` with real usage in the pilot
