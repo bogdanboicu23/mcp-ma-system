@@ -45,7 +45,7 @@ Done: agent loop, context policy, budget/pricing, JSONL call log, `AnthropicHttp
 `ScriptedModelClient`, `ToolCatalog` (6 tools), `ContainerToolHost`, local and Docker executors, `DockerContainer`,
 `PatchExtractor`, 22 unit tests.
 
-Next, in order:
+Next, in order (details, acceptance checks and dates: `docs/implementation-plan.md`; the MCP work needs NuGet access, so do it on a dev machine):
 1. SWE-bench task loader plus the `run` command (task + container + agent loop + patch + `predictions.jsonl`),
    and the evaluator wrapper. Config A on ONE real task end to end (milestone due about 25 Oct).
 2. MCP server (`src/Mcp.Server`, NuGet `ModelContextProtocol`, preview: pin the version) wrapping `ContainerToolHost`;
