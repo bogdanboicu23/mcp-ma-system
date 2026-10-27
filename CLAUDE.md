@@ -46,7 +46,8 @@ Done: agent loop, context policy, budget/pricing, JSONL call log, `AnthropicHttp
 `PatchExtractor`. Workstream 1 code (written 27 Oct, tested offline only): `SweBenchTask`/`TaskLoader`/`TaskSelector`,
 `SweBenchImage`, embedded prompts (`PromptSet`), `EnvironmentVerifier`, `ISystem`/`SingleAgentSystem` (config A),
 `RunOrchestrator`, `RunStore`, `Predictions` + `EvalResultsParser`, `ReportBuilder`, Runner commands
-`select|check|run|batch|eval|report`, `tools/fetch_tasks.py`. 34 unit tests (offline).
+`select|check|run|batch|eval|report`, `tools/fetch_tasks.py`. Config C hub-and-spoke (27 Oct, offline only): `HubAndSpokeSystem`
+(`--workers N`, `--exposure full|role`), `DelegationToolHost`, `WriteScopeHost`. 43 unit tests (offline).
 
 Next, in order (details, acceptance checks and dates: `docs/implementation-plan.md`; the MCP work needs NuGet access, so do it on a dev machine):
 1. VERIFY workstream 1 on the Windows PC (the milestone was due about 25 Oct and has slipped): fetch tasks, `check`,
@@ -56,8 +57,8 @@ Next, in order (details, acceptance checks and dates: `docs/implementation-plan.
    per-agent MCP clients; config B.
 3. Token attribution by source (agent text vs. MCP definitions, calls, results) for RQ2.
 4. Pilot on about 10 tasks: real cost per run, saturation check, calibrate the character-based token estimate.
-5. Topologies in `src/Agents.Topologies`: hub-and-spoke (N = 2, 3, 4 workers), coder-reviewer loop, sequential
-   (last, drop first if behind). Tool-exposure ablation (full vs. role-restricted tools) on hub-and-spoke.
+5. Remaining topologies in `src/Agents.Topologies`: coder-reviewer loop, sequential (last, drop first if behind).
+   Hub-and-spoke is written; wire it to MCP tools (config C currently uses the direct host) once the MCP server exists.
 6. Task labeling (parallel vs. sequential) from SWE-bench gold patches, plus a small synthetic suite.
 
 ## Not yet verified (do not assume these work)

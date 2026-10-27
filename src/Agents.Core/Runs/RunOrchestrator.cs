@@ -124,6 +124,8 @@ public sealed class RunOrchestrator
             MaxTurns = _limits.MaxTurns,
             SystemPromptHash = _prompts.SystemHash,
             TaskPromptHash = _prompts.TaskHash,
+            TopologyPromptHash = _prompts.TopologyHash,
+            Variant = _system.Variant,
             HarnessVersion = _harnessVersion,
         };
 

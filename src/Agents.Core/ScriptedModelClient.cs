@@ -6,6 +6,7 @@ namespace Agents.Core;
 /// </summary>
 public sealed class ScriptedModelClient : IModelClient
 {
+    private readonly object _lock = new();
     private readonly Queue<ModelResponse> _script;
 
     public ScriptedModelClient(IEnumerable<ModelResponse> script, string modelId = "scripted")
@@ -21,12 +22,15 @@ public sealed class ScriptedModelClient : IModelClient
 
     public Task<ModelResponse> SendAsync(ModelRequest request, CancellationToken ct = default)
     {
-        Requests.Add(request);
-        if (_script.Count == 0)
+        lock (_lock)
         {
-            throw new InvalidOperationException("The scripted model ran out of responses.");
-        }
+            Requests.Add(request);
+            if (_script.Count == 0)
+            {
+                throw new InvalidOperationException("The scripted model ran out of responses.");
+            }
 
-        return Task.FromResult(_script.Dequeue());
+            return Task.FromResult(_script.Dequeue());
+        }
     }
 }

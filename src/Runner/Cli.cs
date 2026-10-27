@@ -1,3 +1,4 @@
+using Agents.Topologies;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json.Nodes;
@@ -338,6 +339,16 @@ internal static class Cli
         args.GetDecimal("max-cost", 0.50m),
         args.GetInt("max-turns", 50));
 
+    /// <summary>Config C options: <c>--workers 2|3|4</c> and <c>--exposure full|role</c>.</summary>
+    private static HubOptions Hub(CliArgs args) => new(
+        args.GetInt("workers", 3),
+        args.Get("exposure", "full").ToLowerInvariant() switch
+        {
+            "full" => ToolExposure.Full,
+            "role" => ToolExposure.Role,
+            var other => throw new ArgumentException($"--exposure must be 'full' or 'role', got '{other}'."),
+        });
+
     private static SweBenchImageOptions ImageOptions(CliArgs args)
     {
         var defaults = new SweBenchImageOptions();
@@ -353,7 +364,7 @@ internal static class Cli
     {
         var prompts = PromptSet.Load();
         var limits = Limits(args);
-        var system = Configs.Create(args.Get("config", "A"), prompts, limits);
+        var system = Configs.Create(args.Get("config", "A"), prompts, limits, Hub(args));
         IModelClient model = dry ? DryModel() : RealModel(args);
         var environments = new DockerEnvironmentProvider(
             ImageOptions(args), args.GetInt("memory-gb", 4), args.GetDouble("cpus", 2));

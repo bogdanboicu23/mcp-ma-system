@@ -12,7 +12,7 @@ tasks and the same budget, and measures how much of the cost belongs to the MCP 
 | Path | Purpose |
 |---|---|
 | `src/Agents.Core` | Agent loop, context policy, budget/pricing, call log, model clients, tools, SWE-bench tasks and prompts (`Swe/`, `Prompts/`), run pipeline (`Runs/`) |
-| `src/Agents.Topologies` | Hub-and-spoke, coder-reviewer, sequential (empty for now) |
+| `src/Agents.Topologies` | Hub-and-spoke (config C: `HubAndSpokeSystem`, `DelegationToolHost`, `WriteScopeHost`); coder-reviewer and sequential still to come |
 | `src/Mcp.Server` | Container-bound MCP server (placeholder for now) |
 | `src/Runner` | CLI: `select`, `check`, `run`, `batch`, `eval`, `report` and the smoke tests |
 | `tests/Agents.Core.Tests` | xunit tests (offline: scripted model + local git repo) |
@@ -52,10 +52,10 @@ JSONL call log, `HttpClient` Messages API client, scripted model, the shared too
 host (`ContainerToolHost`), local and Docker executors, throw-away Docker containers (no network, limits), patch
 extraction. Workstream 1 code: task loader and sampler, SWE-bench image naming, shared prompts, environment checks,
 `ISystem` + `SingleAgentSystem` (config A), `RunOrchestrator`, run store, predictions + evaluator wrapper, report, CLI.
-34 unit tests (offline).
+34 unit tests (offline). Hub-and-spoke (config C, `--workers 2|3|4`, `--exposure full|role`), 9 more offline tests (43 in total), not yet run against the live API or Docker.
 
 Not done yet: everything that needs the PC to verify (see caveats), MCP server and MCP-backed tool host (config B),
-token attribution by source (RQ2), topologies (configs C-E), task labeling for RQ3.
+token attribution by source (RQ2), coder-reviewer and sequential topologies (configs D, E), task labeling for RQ3.
 
 Caveats:
 - Nothing has run against a real Docker daemon, a real SWE-bench image, the real evaluator or the live API yet. The

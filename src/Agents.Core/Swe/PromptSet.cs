@@ -11,31 +11,47 @@ namespace Agents.Core.Swe;
 /// </summary>
 public sealed class PromptSet
 {
-    private PromptSet(string systemPrompt, string taskTemplate)
+    private PromptSet(string systemPrompt, string taskTemplate, string hubOrchestrator, string hubWorker)
     {
         SystemPrompt = Normalize(systemPrompt);
         TaskTemplate = Normalize(taskTemplate);
+        HubOrchestratorAddendum = Normalize(hubOrchestrator);
+        HubWorkerAddendum = Normalize(hubWorker);
         SystemHash = Hash(SystemPrompt);
         TaskHash = Hash(TaskTemplate);
+        TopologyHash = Hash(HubOrchestratorAddendum + "\n--\n" + HubWorkerAddendum);
     }
 
     public string SystemPrompt { get; }
 
     public string TaskTemplate { get; }
 
+    /// <summary>Hub-and-spoke only: appended to <see cref="SystemPrompt"/> for the orchestrator.</summary>
+    public string HubOrchestratorAddendum { get; }
+
+    /// <summary>Hub-and-spoke only: appended to <see cref="SystemPrompt"/> for each worker.</summary>
+    public string HubWorkerAddendum { get; }
+
     public string SystemHash { get; }
 
     public string TaskHash { get; }
+
+    /// <summary>Hash of the topology addenda; recorded in the manifest next to the shared prompt hashes.</summary>
+    public string TopologyHash { get; }
 
     public static PromptSet Load()
     {
         var assembly = typeof(PromptSet).Assembly;
         return new PromptSet(
             ReadResource(assembly, "Agents.Core.Prompts.system.md"),
-            ReadResource(assembly, "Agents.Core.Prompts.task.md"));
+            ReadResource(assembly, "Agents.Core.Prompts.task.md"),
+            ReadResource(assembly, "Agents.Core.Prompts.hub_orchestrator.md"),
+            ReadResource(assembly, "Agents.Core.Prompts.hub_worker.md"));
     }
 
-    public static PromptSet FromTexts(string systemPrompt, string taskTemplate) => new(systemPrompt, taskTemplate);
+    public static PromptSet FromTexts(
+        string systemPrompt, string taskTemplate, string hubOrchestrator = "", string hubWorker = "") =>
+        new(systemPrompt, taskTemplate, hubOrchestrator, hubWorker);
 
     /// <summary>The user message for a task: the issue text only. Tests and the reference patch are never included.</summary>
     public string RenderTask(SweBenchTask task) =>

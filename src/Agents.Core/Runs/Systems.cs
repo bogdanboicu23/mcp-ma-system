@@ -14,6 +14,9 @@ public interface ISystem
 {
     string Config { get; }
 
+    /// <summary>Free-text parameters of the configuration (worker count, tool exposure), stored in the manifest.</summary>
+    string Variant => string.Empty;
+
     Task<SolveOutcome> SolveAsync(
         string taskPrompt, ICommandExecutor executor, RunContext run, CancellationToken ct = default);
 }

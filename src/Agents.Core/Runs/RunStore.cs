@@ -57,6 +57,12 @@ public sealed record RunManifest
 
     public string TaskPromptHash { get; init; } = string.Empty;
 
+    /// <summary>Hash of the hub-and-spoke prompt addenda (same for every config; only used by config C).</summary>
+    public string TopologyPromptHash { get; init; } = string.Empty;
+
+    /// <summary>Configuration details that matter for the analysis, e.g. "workers=3;exposure=role". Empty for A.</summary>
+    public string Variant { get; init; } = string.Empty;
+
     public string HarnessVersion { get; init; } = string.Empty;
 }
 
