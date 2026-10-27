@@ -10,6 +10,13 @@ obj/
 .env
 *.key
 
-# Raw experiment output is large; commit aggregated tables only
+# Raw experiment output is large and regenerable; commit only aggregated tables (results/report.csv)
 results/*.jsonl
+results/runs/
+results/eval/
+results/predictions/
+results/dry/
 !results/.gitkeep
+
+# Regenerable with tools/fetch_tasks.py (about 500 tasks); the small id lists in tasks/ are committed
+tasks/swebench_verified.jsonl

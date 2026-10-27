@@ -43,11 +43,15 @@ Chapter 1 (literature review) is finished. Still to write: sections 2.1, 3.1, 3.
 ## Status
 Done: agent loop, context policy, budget/pricing, JSONL call log, `AnthropicHttpClient` (plain HttpClient),
 `ScriptedModelClient`, `ToolCatalog` (6 tools), `ContainerToolHost`, local and Docker executors, `DockerContainer`,
-`PatchExtractor`, 22 unit tests.
+`PatchExtractor`. Workstream 1 code (written 27 Oct, tested offline only): `SweBenchTask`/`TaskLoader`/`TaskSelector`,
+`SweBenchImage`, embedded prompts (`PromptSet`), `EnvironmentVerifier`, `ISystem`/`SingleAgentSystem` (config A),
+`RunOrchestrator`, `RunStore`, `Predictions` + `EvalResultsParser`, `ReportBuilder`, Runner commands
+`select|check|run|batch|eval|report`, `tools/fetch_tasks.py`. 34 unit tests (offline).
 
 Next, in order (details, acceptance checks and dates: `docs/implementation-plan.md`; the MCP work needs NuGet access, so do it on a dev machine):
-1. SWE-bench task loader plus the `run` command (task + container + agent loop + patch + `predictions.jsonl`),
-   and the evaluator wrapper. Config A on ONE real task end to end (milestone due about 25 Oct).
+1. VERIFY workstream 1 on the Windows PC (the milestone was due about 25 Oct and has slipped): fetch tasks, `check`,
+   `run --dry`, the evaluator on a gold patch, then ONE real config A run, `eval`, `report`. Fix whatever the real
+   environment breaks (prelude, evaluator layout, predictions format). See README "Config A on one real task".
 2. MCP server (`src/Mcp.Server`, NuGet `ModelContextProtocol`, preview: pin the version) wrapping `ContainerToolHost`;
    per-agent MCP clients; config B.
 3. Token attribution by source (agent text vs. MCP definitions, calls, results) for RQ2.
@@ -62,4 +66,6 @@ Next, in order (details, acceptance checks and dates: `docs/implementation-plan.
 - `DockerExecutor` / `DockerContainer` have never run against a Docker daemon.
 - SWE-bench image naming (expected form `swebench/sweb.eval.x86_64.<owner>_1776_<repo>-<id>:latest`) and the conda
   activation prelude for the containers are unconfirmed; check on the PC.
-- The author's `dotnet test` and `live` smoke-test results were still pending.
+- The evaluator's output file layout and the predictions field names (`instance_id`, `model_name_or_path`, `model_patch`).
+- `RunLimits` defaults (3M tokens, $0.50, 50 turns) are placeholders until the pilot.
+- The author's `dotnet test` and `live` smoke-test results were still pending as of 27 Oct.

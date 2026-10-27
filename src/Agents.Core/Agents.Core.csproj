@@ -10,4 +10,8 @@
     <InternalsVisibleTo Include="Agents.Core.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Prompts\*.md" />
+  </ItemGroup>
+
 </Project>

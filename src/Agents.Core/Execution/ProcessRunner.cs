@@ -7,7 +7,7 @@ namespace Agents.Core.Execution;
 /// Starts a process and captures its output exactly (no line-ending changes, no BOM), because file
 /// edits are done by reading a file through stdout and writing it back through stdin.
 /// </summary>
-internal static class ProcessRunner
+public static class ProcessRunner
 {
     private static readonly TimeSpan DrainGrace = TimeSpan.FromSeconds(2);
 
