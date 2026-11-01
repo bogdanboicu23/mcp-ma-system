@@ -132,6 +132,23 @@ public static class TaskSelector
         return result;
     }
 
+    /// <summary>
+    /// Sample for RQ3: <paramref name="parallelCount"/> tasks labeled parallel, the rest sequential, each group
+    /// spread over the repositories. Plain random sampling would give almost no parallel tasks, because most
+    /// SWE-bench fixes are one hunk in one file.
+    /// </summary>
+    public static IReadOnlyList<string> SelectStratified(
+        IReadOnlyList<SweBenchTask> tasks, IReadOnlyDictionary<string, TaskLabel> labels,
+        int count, int parallelCount, int seed)
+    {
+        var parallel = tasks.Where(t => labels.TryGetValue(t.InstanceId, out var l) && l.Label == TaskLabel.Parallel).ToList();
+        var sequential = tasks.Where(t => labels.TryGetValue(t.InstanceId, out var l) && l.Label == TaskLabel.Sequential).ToList();
+        var fromParallel = Math.Min(parallelCount, parallel.Count);
+        var picked = Select(parallel, fromParallel, seed).ToList();
+        picked.AddRange(Select(sequential, Math.Min(count - fromParallel, sequential.Count), seed));
+        return picked;
+    }
+
     private static List<string> Shuffle(List<string> items, Random rng)
     {
         for (var i = items.Count - 1; i > 0; i--)

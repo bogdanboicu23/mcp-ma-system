@@ -14,6 +14,8 @@ internal static class Cli
         Commands:
           dry | live                       smoke test of the agent loop (dry is free, live needs ANTHROPIC_API_KEY)
           select --n 10 --seed 42          pick a reproducible pilot sample, writes tasks/pilot_ids.txt
+                 [--labels tasks/labels.csv --parallel-n 5]   stratified: that many parallel tasks (RQ3)
+          label  [--theta 0.4]             label every task parallel/sequential from its reference patch -> tasks/labels.csv
           check  --task <id>               start the task's Docker image and verify it (git state, python, tools)
           run    --task <id> --config A    run one task (add --dry for a scripted model: tests Docker, costs nothing)
           batch  --config A --ids-file tasks/pilot_ids.txt --repeats 1 --max-usd 5
@@ -22,6 +24,7 @@ internal static class Cli
 
         Common options: --tasks-file tasks/swebench_verified.jsonl  --out results  --model claude-haiku-5-5
         Limits (identical for all configs): --max-prompt-tokens 80000 --max-total-tokens 3000000 --max-cost 0.50 --max-turns 50
+        Config C: --workers 2|3|4 --exposure full|role     Config D: --rounds 3
         Container: --memory-gb 4 --cpus 2 --prelude "<shell prefix>" --workdir /testbed
         """;
 
@@ -44,6 +47,7 @@ internal static class Cli
                 "dry" => await Smoke.RunAsync(live: false),
                 "live" => await Smoke.RunAsync(live: true),
                 "select" => Select(args),
+                "label" => Label(args),
                 "check" => await CheckAsync(args, cts.Token),
                 "run" => await RunOneAsync(args, cts.Token),
                 "batch" => await BatchAsync(args, cts.Token),
@@ -79,7 +83,10 @@ internal static class Cli
         var tasks = TaskLoader.Load(TasksFile(args));
         var count = args.GetInt("n", 10);
         var seed = args.GetInt("seed", 42);
-        var ids = TaskSelector.Select(tasks, count, seed);
+        var ids = args.Get("labels") is { } labelsPath
+            ? TaskSelector.SelectStratified(
+                tasks, TaskLabeler.ReadCsv(labelsPath), count, args.GetInt("parallel-n", count / 2), seed)
+            : TaskSelector.Select(tasks, count, seed);
         var path = args.Get("out-file", Path.Combine("tasks", "pilot_ids.txt"));
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
@@ -90,6 +97,25 @@ internal static class Cli
             Console.WriteLine("  " + id);
         }
 
+        return 0;
+    }
+
+    // ----------------------------------------------------------------- label
+
+    /// <summary>Labels every task parallel or sequential from its reference patch (RQ3) and writes tasks/labels.csv.</summary>
+    private static int Label(CliArgs args)
+    {
+        var tasks = TaskLoader.Load(TasksFile(args));
+        var theta = args.GetDouble("theta", TaskLabeler.DefaultTheta);
+        var labels = tasks.Select(t => TaskLabeler.Label(t.InstanceId, t.GoldPatch, theta)).ToList();
+        var path = args.Get("out-file", Path.Combine("tasks", "labels.csv"));
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        File.WriteAllText(path, TaskLabeler.ToCsv(labels, theta));
+
+        var parallel = labels.Count(l => l.Label == TaskLabel.Parallel);
+        Console.WriteLine($"Wrote {labels.Count} labels to {path} (theta {theta:0.00}).");
+        Console.WriteLine($"  parallel: {parallel}, sequential: {labels.Count - parallel}");
+        Console.WriteLine($"  single-file patches: {labels.Count(l => l.Files == 1)}, single-hunk: {labels.Count(l => l.Hunks == 1)}");
         return 0;
     }
 
