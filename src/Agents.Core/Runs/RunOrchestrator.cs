@@ -79,13 +79,21 @@ public sealed class RunOrchestrator
             await using var environment = await _environments.StartAsync(task, runId, ct).ConfigureAwait(false);
             image = environment.Description;
 
-            var outcome = await _system
-                .SolveAsync(_prompts.RenderTask(task), environment.Executor, run, ct)
-                .ConfigureAwait(false);
-            stopReason = outcome.StopReason;
-            turns = outcome.Turns;
+            try
+            {
+                var outcome = await _system
+                    .SolveAsync(_prompts.RenderTask(task), environment.Executor, run, ct)
+                    .ConfigureAwait(false);
+                stopReason = outcome.StopReason;
+                turns = outcome.Turns;
 
-            patch = await PatchExtractor.GetPatchAsync(environment.Executor, ct).ConfigureAwait(false);
+                patch = await PatchExtractor.GetPatchAsync(environment.Executor, ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                // MCP server processes belong to this run's container; stop them before the container goes away.
+                await ToolHostTracker.Shared.ReleaseAsync(environment.Executor).ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException)
         {

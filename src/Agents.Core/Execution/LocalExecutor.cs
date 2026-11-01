@@ -13,6 +13,8 @@ public sealed class LocalExecutor : ICommandExecutor
         _root = rootDirectory;
     }
 
+    public string Root => _root;
+
     public Task<ExecResult> RunAsync(
         string command, TimeSpan timeout, string? stdin = null, CancellationToken ct = default) =>
         ProcessRunner.RunAsync("bash", new[] { "-c", command }, _root, stdin, timeout, ct);

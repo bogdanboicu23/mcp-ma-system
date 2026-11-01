@@ -49,17 +49,20 @@ Done: agent loop, context policy, budget/pricing, JSONL call log, `AnthropicHttp
 `select|check|run|batch|eval|report`, `tools/fetch_tasks.py`. Config C hub-and-spoke (27 Oct, offline only): `HubAndSpokeSystem`
 (`--workers N`, `--exposure full|role`), `DelegationToolHost`, `WriteScopeHost`. 43 unit tests (offline).
 
-Next, in order (details, acceptance checks and dates: `docs/implementation-plan.md`; the MCP work needs NuGet access, so do it on a dev machine):
-1. VERIFY workstream 1 on the Windows PC (the milestone was due about 25 Oct and has slipped): fetch tasks, `check`,
-   `run --dry`, the evaluator on a gold patch, then ONE real config A run, `eval`, `report`. Fix whatever the real
-   environment breaks (prelude, evaluator layout, predictions format). See README "Config A on one real task".
-2. MCP server (`src/Mcp.Server`, NuGet `ModelContextProtocol`, preview: pin the version) wrapping `ContainerToolHost`;
-   per-agent MCP clients; config B.
-3. Token attribution by source (agent text vs. MCP definitions, calls, results) for RQ2.
-4. Pilot on about 10 tasks: real cost per run, saturation check, calibrate the character-based token estimate.
-5. Remaining topologies in `src/Agents.Topologies`: coder-reviewer loop, sequential (last, drop first if behind).
-   Hub-and-spoke is written; wire it to MCP tools (config C currently uses the direct host) once the MCP server exists.
-6. Task labeling (parallel vs. sequential) from SWE-bench gold patches, plus a small synthetic suite.
+Added 1 Nov (offline only, 72 tests): `CoderReviewerSystem` (D), `SequentialSystem` (E), token attribution (`Attribution.cs`),
+conversation caching, `TaskLabeler` + `TaskSelector.SelectStratified`, synthetic suite (`tasks/synthetic`, `--synthetic`,
+`SyntheticEnvironmentProvider`, `SyntheticEvaluator`, `tools/synthetic/Dockerfile`), MCP server (`src/Mcp.Server`), MCP client host
+(`src/Agents.Mcp`: `McpToolHost`, `McpToolHostFactory`), config B, `--transport direct|mcp`, `mcp-check`, `ToolHostTracker`.
+The MCP projects were NOT compiled (no NuGet in the sandbox): build them first on a dev machine.
+
+Next, in order (details: `docs/implementation-plan.md`):
+1. On the Mac: `dotnet build`, fix any MCP SDK mismatch (pin in `src/Mcp.Server` and `src/Agents.Mcp`), `dotnet test`, `mcp-check`.
+2. On the Windows PC, once API credits exist: VERIFY workstream 1 (fetch tasks, `check`, `run --dry`, evaluator on a gold patch,
+   one real config A run, `eval`, `report`; build `mamcp-synth` for the synthetic suite). Fix what the real environment breaks.
+3. Pilot on about 10 tasks: real cost per run, saturation check, calibrate the character-based token estimate, check that
+   attribution reconciles with API usage, choose theta and `RunLimits`.
+4. Main runs (configs A-E, transport controls) by 8 Nov code freeze; results by 20 Nov.
+5. Not built: per-call MCP latency (process start + round trip) in the log.
 
 ## Not yet verified (do not assume these work)
 - Haiku 5.5 prices in `Pricing.cs` come from secondary reporting; check the official pricing page.
@@ -70,3 +73,4 @@ Next, in order (details, acceptance checks and dates: `docs/implementation-plan.
 - The evaluator's output file layout and the predictions field names (`instance_id`, `model_name_or_path`, `model_patch`).
 - `RunLimits` defaults (3M tokens, $0.50, 50 turns) are placeholders until the pilot.
 - The author's `dotnet test` and `live` smoke-test results were still pending as of 27 Oct.
+- Nothing from D, E, attribution, labeler, synthetic suite or MCP has run against Docker or the live API; MCP code was never compiled.

@@ -1,3 +1,4 @@
+using Agents.Mcp;
 using Agents.Topologies;
 using System.Diagnostics;
 using System.Globalization;
@@ -25,6 +26,8 @@ internal static class Cli
         Synthetic suite: add --synthetic [dir] to select, check, run, batch and eval (needs the image from tools/synthetic/Dockerfile)
         Common options: --tasks-file tasks/swebench_verified.jsonl  --out results  --model claude-haiku-5-5
         Limits (identical for all configs): --max-prompt-tokens 80000 --max-total-tokens 3000000 --max-cost 0.50 --max-turns 50
+        Tools:  A = direct, B = single agent over MCP, C/D/E = MCP by default (--transport direct|mcp, --mcp-server <Mcp.Server.dll>)
+        mcp-check                        free: the MCP server and the direct host must return identical tool output
         Config C: --workers 2|3|4 --exposure full|role     Config D: --rounds 3
         Container: --memory-gb 4 --cpus 2 --prelude "<shell prefix>" --workdir /testbed
         """;
@@ -50,6 +53,7 @@ internal static class Cli
                 "select" => Select(args),
                 "label" => Label(args),
                 "check" => await CheckAsync(args, cts.Token),
+                "mcp-check" => await McpCheck.RunAsync(McpServerLaunch.Locate(args.Get("mcp-server")), cts.Token),
                 "run" => await RunOneAsync(args, cts.Token),
                 "batch" => await BatchAsync(args, cts.Token),
                 "eval" => await EvalAsync(args, cts.Token),
@@ -415,7 +419,19 @@ internal static class Cli
     {
         var prompts = PromptSet.Load();
         var limits = Limits(args);
-        var system = Configs.Create(args.Get("config", "A"), prompts, limits, Hub(args), args.GetInt("rounds", 3));
+        var config = args.Get("config", "A");
+        var transport = args.Get("transport") is { } t
+            ? t.ToLowerInvariant() switch
+            {
+                "direct" => ToolTransport.Direct,
+                "mcp" => ToolTransport.Mcp,
+                var other => throw new ArgumentException($"--transport must be 'direct' or 'mcp', got '{other}'."),
+            }
+            : Configs.DefaultTransport(config);
+        var mcp = transport == ToolTransport.Mcp
+            ? new McpToolHostFactory(McpServerLaunch.Locate(args.Get("mcp-server")))
+            : null;
+        var system = Configs.Create(config, prompts, limits, Hub(args), args.GetInt("rounds", 3), transport, mcp);
         IModelClient model = dry ? DryModel() : RealModel(args);
         var environments = Environments(args);
         // Live runs measure each tool set's definition tokens once, exactly (free token-counting endpoint).

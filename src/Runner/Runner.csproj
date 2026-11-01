@@ -3,6 +3,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Agents.Core\Agents.Core.csproj" />
     <ProjectReference Include="..\Agents.Topologies\Agents.Topologies.csproj" />
+    <ProjectReference Include="..\Agents.Mcp\Agents.Mcp.csproj" />
+    <!-- Built together with the Runner (the Runner starts it as a child process), but not linked. -->
+    <ProjectReference Include="..\Mcp.Server\Mcp.Server.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <PropertyGroup>

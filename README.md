@@ -54,8 +54,17 @@ extraction. Workstream 1 code: task loader and sampler, SWE-bench image naming, 
 `ISystem` + `SingleAgentSystem` (config A), `RunOrchestrator`, run store, predictions + evaluator wrapper, report, CLI.
 34 unit tests (offline). Hub-and-spoke (config C, `--workers 2|3|4`, `--exposure full|role`), 9 more offline tests (43 in total), not yet run against the live API or Docker.
 
-Not done yet: everything that needs the PC to verify (see caveats), MCP server and MCP-backed tool host (config B),
-token attribution by source (RQ2), coder-reviewer and sequential topologies (configs D, E), task labeling for RQ3.
+Added 1 Nov (offline only): coder-reviewer (D) and sequential (E) topologies, per-call token attribution by source (RQ2),
+conversation caching, task labeler (`label`, parallel fraction from the gold patch) with stratified selection, a synthetic
+suite of 10 tasks with its own image and evaluator (`--synthetic`), the MCP server (`src/Mcp.Server`), the MCP tool host
+(`src/Agents.Mcp`), config B and MCP transport for C/D/E (`--transport direct|mcp`), and the `mcp-check` equivalence
+command. 72 offline unit tests.
+
+**The MCP projects have never been compiled.** NuGet was blocked where they were written. Build on the Mac first
+(`dotnet build`), fix any SDK API mismatch (version pinned in two csproj files), then run `dotnet run --project src/Runner -- mcp-check`.
+
+Not done yet: everything that needs the PC or API credits to verify (see caveats), the pilot, per-call MCP latency
+logging, the final analysis.
 
 Caveats:
 - Nothing has run against a real Docker daemon, a real SWE-bench image, the real evaluator or the live API yet. The

@@ -27,6 +27,12 @@ public sealed class DockerExecutor : ICommandExecutor
         _prelude = prelude;
     }
 
+    public string Container => _container;
+
+    public string WorkDir => _workDir;
+
+    public string Prelude => _prelude;
+
     public async Task<ExecResult> RunAsync(
         string command, TimeSpan timeout, string? stdin = null, CancellationToken ct = default)
     {

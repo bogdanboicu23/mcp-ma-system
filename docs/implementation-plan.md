@@ -74,7 +74,7 @@ Done when: C (N = 2), D and the ablation each produce a patch on the same real t
 
 ## Cross-cutting
 
-- **Task labeling (RQ3)**: rule fixed **before** any results are seen: a task is `parallel` if the gold patch changes at least two non-test files in separate hunks that do not touch the same file, otherwise `sequential`. `Runner label` writes `tasks/labels.csv`. Plus a synthetic suite of 10-15 hand-written tasks (clearly parallel or sequential) as a sanity check.
+- **Task labeling (RQ3)**: rule fixed **before** any results are seen (decision 38): `p = 1 - max(s_i) / sum(s_i)` over connected components of gold-patch hunks; `parallel` if there are at least 2 components and `p >= 0.4`, otherwise `sequential`. `Runner label` writes `tasks/labels.csv`. Plus the synthetic suite of 10 hand-written tasks (`tasks/synthetic`) as a sanity check.
 - **Pilot (end of week 2)**: about 10 tasks on A, B, C (N = 2), D. Measure cost per run and resolve rate, check whether Verified is saturated for Haiku 5.5, compare `estimatedPromptTokens` with real usage and recalibrate the 80k cap, then fix the per-run caps and the subset size.
 - **Quality metrics**: linter and cyclomatic complexity on the generated patches (small Python CLI scripts), plus a manual look at a small sample. Analysis week.
 - **Each workstream also updates**: `docs/decisions.md` (every fairness-relevant choice), the README status, and notes for report section 2.1.
