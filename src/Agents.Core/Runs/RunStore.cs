@@ -63,6 +63,32 @@ public sealed record RunManifest
     /// <summary>Configuration details that matter for the analysis, e.g. "workers=3;exposure=role". Empty for A.</summary>
     public string Variant { get; init; } = string.Empty;
 
+    /// <summary>Model calls and distinct agent instances in the run (H2: agents reload tool definitions).</summary>
+    public int Calls { get; init; }
+
+    public int Agents { get; init; }
+
+    /// <summary>Prompt tokens and cost by source (see <see cref="TokenAttribution"/>); MCP layer = def + call + res.</summary>
+    public long AttrDefTokens { get; init; }
+
+    public long AttrCallTokens { get; init; }
+
+    public long AttrResTokens { get; init; }
+
+    public long AttrSysTokens { get; init; }
+
+    public long AttrTextTokens { get; init; }
+
+    public decimal AttrSysUsd { get; init; }
+
+    public decimal AttrDefUsd { get; init; }
+
+    public decimal AttrCallUsd { get; init; }
+
+    public decimal AttrResUsd { get; init; }
+
+    public decimal AttrTextUsd { get; init; }
+
     public string HarnessVersion { get; init; } = string.Empty;
 }
 

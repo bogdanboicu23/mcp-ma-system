@@ -26,7 +26,8 @@ public sealed record RunContext(
     IModelClient Model,
     RunBudget Budget,
     ContextPolicy Context,
-    ICallLog Log);
+    ICallLog Log,
+    TokenAttributor? Attribution = null);
 
 public sealed record AgentResult(
     string FinalText,
@@ -88,11 +89,14 @@ public static class AgentLoop
             usage += response.Usage;
             history.Add(new Message("assistant", response.Content));
 
+            var attribution = run.Attribution is null
+                ? null
+                : await run.Attribution.AttributeAsync(request, response, ct).ConfigureAwait(false);
             var toolUses = response.Content.OfType<ToolUseBlock>().ToList();
             run.Log.Write(new CallRecord(
                 run.RunId, run.Config, spec.AgentId, spec.Role, turn, DateTimeOffset.UtcNow,
                 clock.ElapsedMilliseconds, response.Usage, cost, context.EstimatedPromptTokens,
-                context.StubbedToolResults, toolUses.Count, response.StopReason));
+                context.StubbedToolResults, toolUses.Count, response.StopReason, attribution));
 
             finalText = string.Concat(response.Content.OfType<TextBlock>().Select(t => t.Text));
 

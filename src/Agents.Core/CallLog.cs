@@ -17,7 +17,8 @@ public sealed record CallRecord(
     long EstimatedPromptTokens,
     int StubbedToolResults,
     int ToolCalls,
-    string StopReason);
+    string StopReason,
+    TokenAttribution? Attribution = null);
 
 public interface ICallLog
 {

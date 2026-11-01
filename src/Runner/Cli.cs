@@ -310,10 +310,10 @@ internal static class Cli
             return 0;
         }
 
-        Console.WriteLine($"{"config",-7}{"runs",5}{"done",6}{"err",5}{"eval",6}{"resolved",10}{"total $",10}{"mean $",9}{"turns",7}");
+        Console.WriteLine($"{"config",-7}{"runs",5}{"done",6}{"err",5}{"eval",6}{"resolved",10}{"total $",10}{"mean $",9}{"turns",7}{"agents",8}{"calls",7}{"mcp%",7}");
         foreach (var s in summaries)
         {
-            Console.WriteLine($"{s.Config,-7}{s.Runs,5}{s.Completed,6}{s.Errors,5}{s.Evaluated,6}{s.Resolved,10}{s.TotalCostUsd,10:F3}{s.MeanCostUsd,9:F4}{s.MeanTurns,7:F1}");
+            Console.WriteLine($"{s.Config,-7}{s.Runs,5}{s.Completed,6}{s.Errors,5}{s.Evaluated,6}{s.Resolved,10}{s.TotalCostUsd,10:F3}{s.MeanCostUsd,9:F4}{s.MeanTurns,7:F1}{s.MeanAgents,8:F1}{s.MeanCalls,7:F1}{s.MeanMcpShare * 100m,7:F1}");
         }
 
         return 0;
@@ -368,8 +368,12 @@ internal static class Cli
         IModelClient model = dry ? DryModel() : RealModel(args);
         var environments = new DockerEnvironmentProvider(
             ImageOptions(args), args.GetInt("memory-gb", 4), args.GetDouble("cpus", 2));
+        // Live runs measure each tool set's definition tokens once, exactly (free token-counting endpoint).
+        var attributor = model is AnthropicHttpClient live && !args.Has("no-measure")
+            ? new TokenAttributor(measureDefinitions: (tools, ct) => live.MeasureDefinitionsAsync(tools, ct))
+            : new TokenAttributor();
         return new RunOrchestrator(
-            model, system, environments, StoreFor(args, dry), prompts, limits, await HarnessInfo.VersionAsync());
+            model, system, environments, StoreFor(args, dry), prompts, limits, await HarnessInfo.VersionAsync(), attributor);
     }
 
     private static IModelClient RealModel(CliArgs args)

@@ -27,6 +27,7 @@ public sealed class RunOrchestrator
     private readonly PromptSet _prompts;
     private readonly RunLimits _limits;
     private readonly string _harnessVersion;
+    private readonly TokenAttributor _attributor;
 
     public RunOrchestrator(
         IModelClient model,
@@ -35,8 +36,10 @@ public sealed class RunOrchestrator
         RunStore store,
         PromptSet prompts,
         RunLimits limits,
-        string harnessVersion)
+        string harnessVersion,
+        TokenAttributor? attributor = null)
     {
+        _attributor = attributor ?? new TokenAttributor();
         _model = model;
         _system = system;
         _environments = environments;
@@ -58,8 +61,9 @@ public sealed class RunOrchestrator
         Directory.CreateDirectory(dir);
 
         var budget = new RunBudget(_limits.MaxTotalTokens, _limits.MaxCostUsd);
-        var log = new JsonlCallLog(Path.Combine(dir, "calls.jsonl"));
-        var run = new RunContext(runId, _system.Config, _model, budget, new ContextPolicy(_limits.MaxPromptTokens), log);
+        var log = new AttributionTotals(new JsonlCallLog(Path.Combine(dir, "calls.jsonl")));
+        var run = new RunContext(
+            runId, _system.Config, _model, budget, new ContextPolicy(_limits.MaxPromptTokens), log, _attributor);
 
         var started = DateTimeOffset.UtcNow;
         var clock = Stopwatch.StartNew();
@@ -126,6 +130,18 @@ public sealed class RunOrchestrator
             TaskPromptHash = _prompts.TaskHash,
             TopologyPromptHash = _prompts.TopologyHash,
             Variant = _system.Variant,
+            Calls = log.Calls,
+            Agents = log.Agents,
+            AttrDefTokens = log.DefTokens,
+            AttrCallTokens = log.CallTokens,
+            AttrResTokens = log.ResTokens,
+            AttrSysTokens = log.SysTokens,
+            AttrTextTokens = log.TextTokens,
+            AttrSysUsd = log.SysUsd,
+            AttrDefUsd = log.DefUsd,
+            AttrCallUsd = log.CallUsd,
+            AttrResUsd = log.ResUsd,
+            AttrTextUsd = log.TextUsd,
             HarnessVersion = _harnessVersion,
         };
 

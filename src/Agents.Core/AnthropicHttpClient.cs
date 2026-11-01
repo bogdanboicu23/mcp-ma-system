@@ -17,10 +17,19 @@ public sealed class AnthropicHttpClient : IModelClient
     private const string ApiVersion = "2023-06-01";
     private const int MaxAttempts = 5;
 
-    private readonly HttpClient _http;
+    private const string CountEndpoint = "https://api.anthropic.com/v1/messages/count_tokens";
 
-    public AnthropicHttpClient(string apiKey, string modelId = "claude-haiku-5-5", HttpClient? http = null)
+    private readonly HttpClient _http;
+    private readonly bool _cacheConversation;
+
+    /// <param name="cacheConversation">
+    /// Put a third cache breakpoint on the last message block, so earlier turns are read from the cache at the
+    /// cache-read price instead of being re-billed as input on every call (same for every configuration).
+    /// </param>
+    public AnthropicHttpClient(
+        string apiKey, string modelId = "claude-haiku-5-5", HttpClient? http = null, bool cacheConversation = true)
     {
+        _cacheConversation = cacheConversation;
         ModelId = modelId;
         _http = http ?? new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
         _http.DefaultRequestHeaders.Remove("x-api-key");
@@ -58,6 +67,35 @@ public sealed class AnthropicHttpClient : IModelClient
         }
     }
 
+    /// <summary>Exact prompt size of a request, from the (free) token-counting endpoint.</summary>
+    public async Task<long> CountTokensAsync(ModelRequest request, CancellationToken ct = default)
+    {
+        var body = BuildBody(request);
+        body.Remove("max_tokens");
+        using var content = new StringContent(body.ToJsonString(), Encoding.UTF8, new MediaTypeHeaderValue("application/json"));
+        using var response = await _http.PostAsync(CountEndpoint, content, ct).ConfigureAwait(false);
+        var text = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"Anthropic token counting returned {(int)response.StatusCode}: {text}");
+        }
+
+        return JsonNode.Parse(text)?["input_tokens"]?.GetValue<long>()
+               ?? throw new InvalidOperationException("Token counting response has no input_tokens.");
+    }
+
+    /// <summary>
+    /// Tokens added by a tool set: the same tiny request counted with and without the tools. Includes the
+    /// tool-use instructions the API adds whenever tools are present, which is part of what tools cost.
+    /// </summary>
+    public async Task<long> MeasureDefinitionsAsync(IReadOnlyList<ToolDef> tools, CancellationToken ct = default)
+    {
+        var messages = new[] { Message.User("x") };
+        var with = await CountTokensAsync(new ModelRequest("x", messages, tools, 1), ct).ConfigureAwait(false);
+        var without = await CountTokensAsync(new ModelRequest("x", messages, Array.Empty<ToolDef>(), 1), ct).ConfigureAwait(false);
+        return with - without;
+    }
+
     internal JsonObject BuildBody(ModelRequest request)
     {
         var body = new JsonObject
@@ -72,6 +110,13 @@ public sealed class AnthropicHttpClient : IModelClient
             }),
             ["messages"] = new JsonArray(request.Messages.Select(ToJson).ToArray<JsonNode?>()),
         };
+
+        if (_cacheConversation && body["messages"] is JsonArray messages && messages.Count > 0
+            && messages[^1]?["content"] is JsonArray lastContent && lastContent.Count > 0
+            && lastContent[^1] is JsonObject lastBlock)
+        {
+            lastBlock["cache_control"] = new JsonObject { ["type"] = "ephemeral" };
+        }
 
         if (request.Tools.Count > 0)
         {

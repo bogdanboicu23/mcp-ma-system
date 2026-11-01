@@ -17,9 +17,12 @@ public sealed record Pricing(
     /// <summary>Haiku 5.5, 5-minute cache writes.</summary>
     public static Pricing Haiku55 { get; } = new(0.10m, 0.50m, 0.01m, 0.125m, 100_000, 5m);
 
+    /// <summary>1 normally, <see cref="HighTierMultiplier"/> when the prompt is above the tier threshold.</summary>
+    public decimal Multiplier(Usage u) => u.PromptTokens > TierThreshold ? HighTierMultiplier : 1m;
+
     public decimal Cost(Usage u)
     {
-        var multiplier = u.PromptTokens > TierThreshold ? HighTierMultiplier : 1m;
+        var multiplier = Multiplier(u);
         var raw = u.InputTokens * InputPerM
                   + u.OutputTokens * OutputPerM
                   + u.CacheReadTokens * CacheReadPerM
