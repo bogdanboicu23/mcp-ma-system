@@ -364,7 +364,7 @@ internal static class Cli
     {
         var prompts = PromptSet.Load();
         var limits = Limits(args);
-        var system = Configs.Create(args.Get("config", "A"), prompts, limits, Hub(args));
+        var system = Configs.Create(args.Get("config", "A"), prompts, limits, Hub(args), args.GetInt("rounds", 3));
         IModelClient model = dry ? DryModel() : RealModel(args);
         var environments = new DockerEnvironmentProvider(
             ImageOptions(args), args.GetInt("memory-gb", 4), args.GetDouble("cpus", 2));

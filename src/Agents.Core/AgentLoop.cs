@@ -42,24 +42,41 @@ public sealed record AgentResult(
 /// </summary>
 public static class AgentLoop
 {
-    public static async Task<AgentResult> RunAsync(
-        AgentSpec spec, string task, RunContext run, CancellationToken ct = default)
+    public static Task<AgentResult> RunAsync(
+        AgentSpec spec, string task, RunContext run, CancellationToken ct = default) =>
+        RunCoreAsync(spec, new List<Message> { Message.User(task) }, 0, run, ct);
+
+    /// <summary>
+    /// Continues an agent after it stopped: its earlier history is kept and a new user message is appended
+    /// (for example reviewer feedback for a coder). Turn numbers in the log continue where the agent left off;
+    /// <see cref="AgentSpec.MaxTurns"/> applies to this continuation only. The returned history contains everything.
+    /// </summary>
+    public static Task<AgentResult> ContinueAsync(
+        AgentSpec spec, IReadOnlyList<Message> history, string followUp, RunContext run, CancellationToken ct = default)
     {
-        var history = new List<Message> { Message.User(task) };
+        var all = new List<Message>(history) { Message.User(followUp) };
+        var priorTurns = history.Count(m => m.Role == "assistant");
+        return RunCoreAsync(spec, all, priorTurns, run, ct);
+    }
+
+    private static async Task<AgentResult> RunCoreAsync(
+        AgentSpec spec, List<Message> history, int priorTurns, RunContext run, CancellationToken ct)
+    {
         var usage = Usage.Zero;
         var finalText = string.Empty;
 
-        for (var turn = 1; turn <= spec.MaxTurns; turn++)
+        for (var step = 1; step <= spec.MaxTurns; step++)
         {
+            var turn = priorTurns + step;
             if (run.Budget.Exceeded)
             {
-                return Finish(StopReasons.BudgetExceeded, turn - 1);
+                return Finish(StopReasons.BudgetExceeded, step - 1);
             }
 
             var context = run.Context.Apply(spec.System, spec.Tools.Tools, history);
             if (context.Overflow)
             {
-                return Finish(StopReasons.ContextOverflow, turn - 1);
+                return Finish(StopReasons.ContextOverflow, step - 1);
             }
 
             var request = new ModelRequest(spec.System, context.Messages, spec.Tools.Tools, spec.MaxTokensPerCall);
@@ -81,7 +98,7 @@ public static class AgentLoop
 
             if (toolUses.Count == 0)
             {
-                return Finish(StopReasons.EndTurn, turn);
+                return Finish(StopReasons.EndTurn, step);
             }
 
             // Tool calls run one after another, which keeps runs reproducible.

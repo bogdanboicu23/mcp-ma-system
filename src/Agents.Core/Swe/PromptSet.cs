@@ -11,15 +11,22 @@ namespace Agents.Core.Swe;
 /// </summary>
 public sealed class PromptSet
 {
-    private PromptSet(string systemPrompt, string taskTemplate, string hubOrchestrator, string hubWorker)
+    private PromptSet(
+        string systemPrompt, string taskTemplate, string hubOrchestrator, string hubWorker,
+        IReadOnlyDictionary<string, string>? addenda)
     {
+        Addenda = (addenda ?? new Dictionary<string, string>())
+            .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+            .ToDictionary(kv => kv.Key, kv => Normalize(kv.Value));
         SystemPrompt = Normalize(systemPrompt);
         TaskTemplate = Normalize(taskTemplate);
         HubOrchestratorAddendum = Normalize(hubOrchestrator);
         HubWorkerAddendum = Normalize(hubWorker);
         SystemHash = Hash(SystemPrompt);
         TaskHash = Hash(TaskTemplate);
-        TopologyHash = Hash(HubOrchestratorAddendum + "\n--\n" + HubWorkerAddendum);
+        TopologyHash = Hash(
+            HubOrchestratorAddendum + "\n--\n" + HubWorkerAddendum + "\n--\n" +
+            string.Join("\n--\n", Addenda.Select(kv => kv.Key + "=" + kv.Value)));
     }
 
     public string SystemPrompt { get; }
@@ -31,6 +38,13 @@ public sealed class PromptSet
 
     /// <summary>Hub-and-spoke only: appended to <see cref="SystemPrompt"/> for each worker.</summary>
     public string HubWorkerAddendum { get; }
+
+    /// <summary>Role addenda of the other topologies (coder, reviewer, planner, seqcoder, tester), by name.</summary>
+    public IReadOnlyDictionary<string, string> Addenda { get; }
+
+    /// <summary>The shared system prompt followed by the named role addendum (the bare prompt if there is none).</summary>
+    public string Compose(string role) =>
+        Addenda.TryGetValue(role, out var text) && text.Length > 0 ? SystemPrompt + "\n\n" + text : SystemPrompt;
 
     public string SystemHash { get; }
 
@@ -46,12 +60,16 @@ public sealed class PromptSet
             ReadResource(assembly, "Agents.Core.Prompts.system.md"),
             ReadResource(assembly, "Agents.Core.Prompts.task.md"),
             ReadResource(assembly, "Agents.Core.Prompts.hub_orchestrator.md"),
-            ReadResource(assembly, "Agents.Core.Prompts.hub_worker.md"));
+            ReadResource(assembly, "Agents.Core.Prompts.hub_worker.md"),
+            RoleNames.ToDictionary(n => n, n => ReadResource(assembly, $"Agents.Core.Prompts.role_{n}.md")));
     }
 
     public static PromptSet FromTexts(
-        string systemPrompt, string taskTemplate, string hubOrchestrator = "", string hubWorker = "") =>
-        new(systemPrompt, taskTemplate, hubOrchestrator, hubWorker);
+        string systemPrompt, string taskTemplate, string hubOrchestrator = "", string hubWorker = "",
+        IReadOnlyDictionary<string, string>? addenda = null) =>
+        new(systemPrompt, taskTemplate, hubOrchestrator, hubWorker, addenda);
+
+    private static readonly string[] RoleNames = { "coder", "reviewer", "planner", "seqcoder", "tester" };
 
     /// <summary>The user message for a task: the issue text only. Tests and the reference patch are never included.</summary>
     public string RenderTask(SweBenchTask task) =>
