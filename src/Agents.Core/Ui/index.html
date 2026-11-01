@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP multi-agent experiment</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --ink: #1c2330; --muted: #657084; --line: #dde1e8; --accent: #2f5fd0;
+  --good: #1f8a4c; --bad: #c0392b; --warn: #b7791f;
+  --c-A: #4e79a7; --c-B: #59a14f; --c-C: #e15759; --c-D: #b07aa1; --c-E: #f28e2b;
+  --s-sys: #9aa5b8; --s-def: #e15759; --s-call: #f28e2b; --s-res: #edc948; --s-text: #4e79a7;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --card: #1a202a; --ink: #e6e9ef; --muted: #98a2b3; --line: #2b3342; --accent: #7aa2ff;
+    --good: #4cc98a; --bad: #ff7b6b; --warn: #e0b04c;
+    --c-A: #6f9bc9; --c-B: #7cc171; --c-C: #ff7f81; --c-D: #c99ac0; --c-E: #ffab55;
+    --s-sys: #7c879a; --s-def: #ff7f81; --s-call: #ffab55; --s-res: #f2d56a; --s-text: #6f9bc9;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --card: #1a202a; --ink: #e6e9ef; --muted: #98a2b3; --line: #2b3342; --accent: #7aa2ff;
+  --good: #4cc98a; --bad: #ff7b6b; --warn: #e0b04c;
+  --c-A: #6f9bc9; --c-B: #7cc171; --c-C: #ff7f81; --c-D: #c99ac0; --c-E: #ffab55;
+  --s-sys: #7c879a; --s-def: #ff7f81; --s-call: #ffab55; --s-res: #f2d56a; --s-text: #6f9bc9;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { padding: 14px 16px 0; max-width: 1200px; margin: 0 auto; }
+h1 { font-size: 18px; margin: 0 0 2px; }
+.sub { color: var(--muted); font-size: 12px; }
+nav { display: flex; gap: 4px; flex-wrap: wrap; margin: 12px 0 0; border-bottom: 1px solid var(--line); }
+nav button { background: none; border: 0; padding: 8px 12px; color: var(--muted); cursor: pointer; font: inherit; border-bottom: 2px solid transparent; }
+nav button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+.banner { background: color-mix(in srgb, var(--warn) 18%, var(--card)); border: 1px solid var(--warn); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+.card h2 { font-size: 14px; margin: 0 0 4px; }
+.card p.note { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+.kpis { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 12px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.kpi b { display: block; font-size: 22px; }
+.kpi span { color: var(--muted); font-size: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+th.sort { cursor: pointer; }
+tbody tr.click { cursor: pointer; }
+tbody tr.click:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.scroll { overflow-x: auto; }
+.scroll.tall { max-height: 360px; overflow-y: auto; }
+.scroll.tall th { position: sticky; top: 0; background: var(--card); }
+svg { max-width: 100%; height: auto; display: block; }
+svg text { fill: var(--ink); font: 11px system-ui, sans-serif; }
+svg .muted { fill: var(--muted); }
+svg .axis { stroke: var(--line); }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; background: var(--line); }
+.pill.good { background: color-mix(in srgb, var(--good) 22%, transparent); color: var(--good); }
+.pill.bad { background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--bad); }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+select, input[type=search] { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+pre { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow: auto; max-height: 320px; font-size: 12px; }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margin: 0; font-size: 13px; }
+dt { color: var(--muted); }
+dd { margin: 0; word-break: break-all; }
+.empty { color: var(--muted); padding: 24px; text-align: center; }
+.tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--bg); padding: 4px 8px; border-radius: 6px; font-size: 12px; display: none; z-index: 5; max-width: 320px; }
+.two { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+@media (max-width: 520px) { .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Multi-agent architectures over MCP: experiment results</h1>
+  <div class="sub" id="root">loading…</div>
+  <nav id="tabs" role="tablist"></nav>
+</header>
+<main id="view"></main>
+<div class="tip" id="tip"></div>
+
+<script>
+"use strict";
+const CONFIGS = ["A", "B", "C", "D", "E"];
+const CONFIG_NAMES = {
+  A: "single agent, direct tools", B: "single agent, MCP tools", C: "hub-and-spoke (MCP)",
+  D: "coder-reviewer (MCP)", E: "sequential planner→coder→tester (MCP)"
+};
+const SOURCES = [["sys", "system & task"], ["def", "tool definitions"], ["call", "tool calls"], ["res", "tool results"], ["text", "agent text"]];
+const TABS = ["Overview", "Cost (RQ2)", "Task structure (RQ3)", "Runs", "Designs", "Fairness"];
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const usd = v => v == null || isNaN(v) ? "–" : "$" + (v >= 10 ? v.toFixed(2) : v.toFixed(v >= 1 ? 2 : 3));
+const pct = v => v == null || isNaN(v) ? "–" : (v * 100).toFixed(0) + "%";
+const num = (v, d = 0) => v == null || isNaN(v) ? "–" : Number(v).toLocaleString("en", { maximumFractionDigits: d });
+const sum = a => a.reduce((x, y) => x + y, 0);
+const mean = a => a.length ? sum(a) / a.length : NaN;
+const color = c => `var(--c-${c})`;
+
+let DATA = null, RUNS = [], tab = 0, runSort = { key: "runId", dir: 1 }, runFilter = { config: "", status: "", resolved: "", q: "" }, openRun = null;
+
+/* ---------- data ---------- */
+function derive(r) {
+  const m = r.manifest, attr = m.attrSysUsd + m.attrDefUsd + m.attrCallUsd + m.attrResUsd + m.attrTextUsd;
+  const mcpUsd = m.attrDefUsd + m.attrCallUsd + m.attrResUsd;
+  return { ...m, resolved: r.resolved, label: r.label, pHat: r.pHat, mcpUsd, mcpShare: attr ? mcpUsd / attr : NaN, totalTokens: m.inputTokens + m.outputTokens + m.cacheReadTokens + m.cacheWriteTokens };
+}
+function wilson(k, n, z = 1.96) {
+  if (!n) return [NaN, NaN, NaN];
+  const p = k / n, d = 1 + z * z / n, c = p + z * z / (2 * n), w = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
+  return [p, Math.max(0, (c - w) / d), Math.min(1, (c + w) / d)];
+}
+function ols(pts) {
+  const n = pts.length; if (n < 3) return null;
+  const mx = mean(pts.map(p => p[0])), my = mean(pts.map(p => p[1]));
+  const sxx = sum(pts.map(p => (p[0] - mx) ** 2)), sxy = sum(pts.map(p => (p[0] - mx) * (p[1] - my))), syy = sum(pts.map(p => (p[1] - my) ** 2));
+  if (!sxx) return null;
+  const b = sxy / sxx; return { b, a: my - b * mx, r2: syy ? sxy * sxy / (sxx * syy) : NaN };
+}
+function configStats(runs) {
+  return CONFIGS.map(c => {
+    const all = runs.filter(r => r.config === c), done = all.filter(r => r.status === "completed");
+    const ev = done.filter(r => r.resolved != null), ok = ev.filter(r => r.resolved);
+    return {
+      config: c, runs: all.length, errors: all.length - done.length, evaluated: ev.length, resolved: ok.length,
+      rate: wilson(ok.length, ev.length), cost: mean(done.map(r => r.costUsd)), totalCost: sum(all.map(r => r.costUsd)),
+      costPerResolved: ok.length ? sum(done.map(r => r.costUsd)) / ok.length : NaN,
+      agents: mean(done.map(r => r.agents)), calls: mean(done.map(r => r.calls)), mcpShare: mean(done.map(r => r.mcpShare)),
+      tokens: mean(done.map(r => r.totalTokens)), seconds: mean(done.map(r => r.durationMs / 1000))
+    };
+  }).filter(s => s.runs > 0);
+}
+
+/* ---------- svg helpers ---------- */
+const svg = (w, h, body) => `<svg viewBox="0 0 ${w} ${h}" width="${w}" role="img">${body}</svg>`;
+function barChart({ items, w = 560, h = 240, fmt = v => v, max, yTitle = "" }) {
+  const m = { l: 46, r: 10, t: 22, b: 34 }, iw = w - m.l - m.r, ih = h - m.t - m.b;
+  const top = max ?? Math.max(...items.map(i => i.hi ?? i.value).filter(isFinite), 1e-9) * 1.1;
+  const bw = iw / items.length, y = v => m.t + ih - ih * v / top;
+  let s = "";
+  for (let k = 0; k <= 4; k++) { const v = top * k / 4; s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${y(v)}" y2="${y(v)}"/><text class="muted" x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${fmt(v)}</text>`; }
+  items.forEach((it, i) => {
+    const x = m.l + i * bw + bw * 0.2, ww = bw * 0.6;
+    if (isFinite(it.value)) {
+      s += `<rect x="${x}" y="${y(it.value)}" width="${ww}" height="${Math.max(0, m.t + ih - y(it.value))}" rx="3" fill="${it.color}" data-tip="${esc(it.tip ?? it.label + ": " + fmt(it.value))}"/>`;
+      if (it.lo != null && isFinite(it.lo)) s += `<line stroke="var(--ink)" x1="${x + ww / 2}" x2="${x + ww / 2}" y1="${y(it.lo)}" y2="${y(it.hi)}"/><line stroke="var(--ink)" x1="${x + ww / 2 - 4}" x2="${x + ww / 2 + 4}" y1="${y(it.hi)}" y2="${y(it.hi)}"/><line stroke="var(--ink)" x1="${x + ww / 2 - 4}" x2="${x + ww / 2 + 4}" y1="${y(it.lo)}" y2="${y(it.lo)}"/>`;
+      s += `<text x="${x + ww / 2}" y="${y(it.hi ?? it.value) - 4}" text-anchor="middle">${fmt(it.value)}</text>`;
+    }
+    s += `<text class="muted" x="${x + ww / 2}" y="${h - 16}" text-anchor="middle">${esc(it.label)}</text>`;
+    if (it.sub) s += `<text class="muted" x="${x + ww / 2}" y="${h - 4}" text-anchor="middle" style="font-size:10px">${esc(it.sub)}</text>`;
+  });
+  if (yTitle) s += `<text class="muted" x="4" y="10">${esc(yTitle)}</text>`;
+  return svg(w, h, s);
+}
+function stackedBars({ rows, w = 560, labelW = 60, fmt = usd }) {
+  const rowH = 30, h = rows.length * rowH + 24, iw = w - labelW - 70;
+  const max = Math.max(...rows.map(r => sum(r.parts.map(p => p.value))), 1e-9);
+  let s = "";
+  rows.forEach((r, i) => {
+    const y = 8 + i * rowH; let x = labelW;
+    s += `<text x="${labelW - 8}" y="${y + 15}" text-anchor="end">${esc(r.label)}</text>`;
+    r.parts.forEach(p => { const ww = iw * p.value / max; s += `<rect x="${x}" y="${y}" width="${Math.max(0, ww)}" height="20" fill="${p.color}" data-tip="${esc(r.label + " · " + p.name + ": " + fmt(p.value))}"/>`; x += ww; });
+    s += `<text class="muted" x="${x + 6}" y="${y + 15}">${fmt(sum(r.parts.map(p => p.value)))}</text>`;
+  });
+  return svg(w, h, s);
+}
+function scatter({ series, w = 560, h = 280, xTitle, yTitle, xFmt = v => v, yFmt = v => v, line, xMax, yMax, xTicks }) {
+  const m = { l: 50, r: 12, t: 24, b: 38 }, iw = w - m.l - m.r, ih = h - m.t - m.b;
+  const pts = series.flatMap(s => s.points);
+  const xm = xMax ?? Math.max(...pts.map(p => p[0]), 1) * 1.05, ym = yMax ?? Math.max(...pts.map(p => p[1]), 1e-9) * 1.1;
+  const X = v => m.l + iw * v / xm, Y = v => m.t + ih - ih * v / ym;
+  let s = "";
+  for (let k = 0; k <= 4; k++) {
+    const v = ym * k / 4, u = xm * k / 4;
+    s += `<line class="axis" x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text class="muted" x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${yFmt(v)}</text>`;
+    if (!xTicks) s += `<text class="muted" x="${X(u)}" y="${h - 20}" text-anchor="middle">${xFmt(u)}</text>`;
+  }
+  (xTicks || []).forEach(u => { s += `<text class="muted" x="${X(u)}" y="${h - 20}" text-anchor="middle">${xFmt(u)}</text>`; });
+  series.forEach(se => se.points.forEach(p => { s += `<circle cx="${X(p[0] + (p[2] || 0))}" cy="${Y(p[1])}" r="3.5" fill="${se.color}" fill-opacity=".65" data-tip="${esc(se.name + " · " + xFmt(p[0]) + ", " + yFmt(p[1]))}"/>`; }));
+  if (line) s += `<line stroke="var(--ink)" stroke-dasharray="5 4" x1="${X(0)}" y1="${Y(line.a)}" x2="${X(xm)}" y2="${Y(line.a + line.b * xm)}"/>`;
+  s += `<text class="muted" x="${w / 2}" y="${h - 4}" text-anchor="middle">${esc(xTitle)}</text><text class="muted" x="4" y="10">${esc(yTitle)}</text>`;
+  return svg(w, h, s);
+}
+const legend = items => `<div class="legend">${items.map(i => `<span><i style="background:${i.color}"></i>${esc(i.name)}</span>`).join("")}</div>`;
+
+/* ---------- views ---------- */
+function viewOverview() {
+  const st = configStats(RUNS), ev = RUNS.filter(r => r.resolved != null);
+  const spent = sum(RUNS.map(r => r.costUsd));
+  let h = `<div class="kpis">
+    <div class="kpi"><b>${RUNS.length}</b><span>runs (${RUNS.filter(r => r.status !== "completed").length} infrastructure errors)</span></div>
+    <div class="kpi"><b>${ev.length}</b><span>evaluated, ${ev.filter(r => r.resolved).length} resolved</span></div>
+    <div class="kpi"><b>${usd(spent)}</b><span>spent so far (budget about $100)</span></div>
+    <div class="kpi"><b>${new Set(RUNS.map(r => r.instanceId)).size}</b><span>distinct tasks</span></div></div>`;
+  h += `<div class="two"><div class="card"><h2>Resolve rate (RQ1)</h2><p class="note">Share of evaluated runs that pass the hidden tests. Bars show the 95% Wilson interval; with few runs it is wide.</p>` +
+    barChart({ items: st.map(s => ({ label: s.config, sub: s.evaluated + " runs", value: s.rate[0], lo: s.rate[1], hi: s.rate[2], color: color(s.config), tip: `${s.config}: ${s.resolved}/${s.evaluated} resolved` })), max: 1, fmt: pct }) + `</div>
+    <div class="card"><h2>Cost per resolved task</h2><p class="note">Total spend of the configuration divided by the tasks it resolved. Lower is better.</p>` +
+    barChart({ items: st.map(s => ({ label: s.config, sub: usd(s.cost) + " / run", value: s.costPerResolved, color: color(s.config) })), fmt: usd }) + `</div></div>`;
+  h += `<div class="card"><h2>Per configuration</h2><div class="scroll"><table><thead><tr><th>config</th><th>runs</th><th>evaluated</th><th>resolved</th><th>rate</th><th>95% interval</th><th>cost / run</th><th>cost / resolved</th><th>agents</th><th>calls</th><th>MCP share</th><th>tokens / run</th><th>time / run</th></tr></thead><tbody>` +
+    st.map(s => `<tr><td><b style="color:${color(s.config)}">${s.config}</b> <span class="sub">${esc(CONFIG_NAMES[s.config])}</span></td><td>${s.runs}</td><td>${s.evaluated}</td><td>${s.resolved}</td><td>${pct(s.rate[0])}</td><td>${pct(s.rate[1])}–${pct(s.rate[2])}</td><td>${usd(s.cost)}</td><td>${usd(s.costPerResolved)}</td><td>${num(s.agents, 1)}</td><td>${num(s.calls, 0)}</td><td>${pct(s.mcpShare)}</td><td>${num(s.tokens)}</td><td>${num(s.seconds, 0)} s</td></tr>`).join("") +
+    `</tbody></table></div></div>`;
+  return h;
+}
+
+function viewCost() {
+  const done = RUNS.filter(r => r.status === "completed"), st = configStats(RUNS);
+  const parts = c => {
+    const rs = done.filter(r => r.config === c);
+    return SOURCES.map(([k, name]) => ({ name, color: `var(--s-${k})`, value: mean(rs.map(r => r["attr" + k[0].toUpperCase() + k.slice(1) + "Usd"])) }));
+  };
+  let h = `<div class="card"><h2>Where the money goes</h2><p class="note">Mean cost per run split by what the tokens were: tool definitions + tool calls + tool results form the <b>MCP layer</b> (RQ2). Sources are an estimate by prompt position, reconciled to the API totals.</p>` +
+    stackedBars({ rows: st.map(s => ({ label: s.config, parts: parts(s.config) })), w: 760 }) + legend(SOURCES.map(([k, n]) => ({ name: n, color: `var(--s-${k})` }))) + `</div>`;
+  h += `<div class="two"><div class="card"><h2>MCP layer share of cost</h2><p class="note">(definitions + calls + results) / attributed cost, mean of runs.</p>` +
+    barChart({ items: st.map(s => ({ label: s.config, value: s.mcpShare, color: color(s.config) })), max: 1, fmt: pct }) + `</div>`;
+  const series = st.map(s => ({ name: "config " + s.config, color: color(s.config), points: done.filter(r => r.config === s.config).map(r => [r.agents, r.mcpUsd, (CONFIGS.indexOf(s.config) - 2) * 0.05]) }));
+  const pts = done.map(r => [r.agents, r.mcpUsd]), fit = ols(pts);
+  h += `<div class="card"><h2>H2: MCP cost vs number of agents</h2><p class="note">Each dot is a run. Dashed line: least-squares fit.` +
+    (fit ? ` Slope <b>${usd(fit.b)}</b> per extra agent, R² = <b>${fit.r2.toFixed(2)}</b>.` : " Not enough varying data for a fit.") + `</p>` +
+    scatter({ series, line: fit, xTitle: "agents in the run", yTitle: "MCP-layer cost per run", xFmt: v => v.toFixed(0), yFmt: usd, xTicks: [...new Set(done.map(r => r.agents))], xMax: Math.max(...done.map(r => r.agents), 1) + 0.5 }) + legend(series) + `</div></div>`;
+  h += `<div class="card"><h2>Prompt tokens by source (mean per run)</h2><div class="scroll"><table><thead><tr><th>config</th>` + SOURCES.map(s => `<th>${s[1]}</th>`).join("") + `<th>definitions share</th></tr></thead><tbody>` +
+    st.map(s => {
+      const rs = done.filter(r => r.config === s.config), v = SOURCES.map(([k]) => mean(rs.map(r => r["attr" + k[0].toUpperCase() + k.slice(1) + "Tokens"])));
+      return `<tr><td><b style="color:${color(s.config)}">${s.config}</b></td>${v.map(x => `<td>${num(x)}</td>`).join("")}<td>${pct(v[1] / sum(v))}</td></tr>`;
+    }).join("") + `</tbody></table></div></div>`;
+  return h;
+}
+
+function viewStructure() {
+  if (!DATA.labelsFound) return `<div class="card"><div class="empty">No task labels found. Create them with <code>dotnet run --project src/Runner -- label</code> (writes tasks/labels.csv), or put a labels.csv into the results folder, then reload.</div></div>`;
+  const labeled = RUNS.filter(r => r.status === "completed" && r.resolved != null && r.label);
+  const groups = ["parallel", "sequential"];
+  let h = `<div class="card"><h2>Resolve rate by task structure (RQ3, H1)</h2><p class="note">Tasks are labeled from the gold patch before any run: parallel if the patch splits into at least two independent parts. H1 predicts that the multi-agent configurations gain on parallel tasks and not on sequential ones.</p><div class="two">`;
+  groups.forEach(g => {
+    const items = CONFIGS.map(c => { const rs = labeled.filter(r => r.config === c && r.label === g), k = rs.filter(r => r.resolved).length, w = wilson(k, rs.length); return rs.length ? { label: c, sub: rs.length + " runs", value: w[0], lo: w[1], hi: w[2], color: color(c) } : null; }).filter(Boolean);
+    h += `<div><b>${g}</b> (${new Set(labeled.filter(r => r.label === g).map(r => r.instanceId)).size} tasks)` + barChart({ items, max: 1, fmt: pct, h: 220 }) + `</div>`;
+  });
+  h += `</div></div>`;
+  h += `<div class="card"><h2>Difference to the single-agent baseline (A)</h2><p class="note">Resolve rate of each configuration minus config A, by task structure. Percentage points; noise is large at small n.</p><div class="scroll"><table><thead><tr><th>config</th><th>parallel</th><th>sequential</th><th>interaction (parallel − sequential)</th></tr></thead><tbody>`;
+  const rate = (c, g) => { const rs = labeled.filter(r => r.config === c && r.label === g); return rs.length ? rs.filter(r => r.resolved).length / rs.length : NaN; };
+  CONFIGS.filter(c => c !== "A").forEach(c => {
+    const dp = rate(c, "parallel") - rate("A", "parallel"), ds = rate(c, "sequential") - rate("A", "sequential"), f = v => isNaN(v) ? "–" : (v > 0 ? "+" : "") + (v * 100).toFixed(0) + " pp";
+    h += `<tr><td><b style="color:${color(c)}">${c}</b></td><td>${f(dp)}</td><td>${f(ds)}</td><td>${f(dp - ds)}</td></tr>`;
+  });
+  h += `</tbody></table></div></div>`;
+  const series = CONFIGS.map(c => ({ name: "config " + c, color: color(c), points: labeled.filter(r => r.config === c).map(r => [r.pHat, r.costUsd]) })).filter(s => s.points.length);
+  h += `<div class="card"><h2>Cost vs parallel fraction p̂</h2><p class="note">p̂ = 1 − (largest independent part) / (all parts) of the gold patch.</p>` + scatter({ series, xTitle: "parallel fraction p̂", yTitle: "cost per run", xFmt: v => v.toFixed(2), yFmt: usd, xMax: 1 }) + legend(series) + `</div>`;
+  return h;
+}
+
+function filteredRuns() {
+  const f = runFilter, q = f.q.toLowerCase();
+  const rs = RUNS.filter(r => (!f.config || r.config === f.config) && (!f.status || r.status === f.status) &&
+    (!f.resolved || (f.resolved === "yes" ? r.resolved === true : f.resolved === "no" ? r.resolved === false : r.resolved == null)) && (!q || r.runId.toLowerCase().includes(q)));
+  return rs.sort((a, b) => { const x = a[runSort.key], y = b[runSort.key]; return (x < y ? -1 : x > y ? 1 : 0) * runSort.dir; });
+}
+function viewRuns() {
+  const cols = [["runId", "run"], ["label", "structure"], ["status", "status"], ["resolved", "resolved"], ["stopReason", "stop"], ["agents", "agents"], ["calls", "calls"], ["costUsd", "cost"], ["mcpShare", "MCP share"], ["totalTokens", "tokens"], ["durationMs", "time"]];
+  const opt = (a, sel) => a.map(v => `<option ${v === sel ? "selected" : ""}>${v}</option>`).join("");
+  let h = `<div class="filters"><select id="fc"><option value="">all configs</option>${opt(CONFIGS, runFilter.config)}</select>
+    <select id="fs"><option value="">any status</option>${opt(["completed", "error"], runFilter.status)}</select>
+    <select id="fr"><option value="">any verdict</option>${opt(["yes", "no", "not evaluated"], runFilter.resolved)}</select>
+    <input type="search" id="fq" placeholder="filter by run id" value="${esc(runFilter.q)}"></div>`;
+  const rs = filteredRuns();
+  h += `<div class="card"><div class="scroll tall"><table><thead><tr>${cols.map(([k, n]) => `<th class="sort" data-k="${k}">${n}${runSort.key === k ? (runSort.dir > 0 ? " ▲" : " ▼") : ""}</th>`).join("")}</tr></thead><tbody>` +
+    rs.map(r => `<tr class="click" data-id="${esc(r.runId)}"><td>${esc(r.runId)}</td><td>${esc(r.label ?? "–")}</td><td>${r.status === "completed" ? "completed" : `<span class="pill bad">error</span>`}</td><td>${r.resolved == null ? "–" : r.resolved ? `<span class="pill good">yes</span>` : `<span class="pill bad">no</span>`}</td><td>${esc(r.stopReason)}</td><td>${r.agents}</td><td>${r.calls}</td><td>${usd(r.costUsd)}</td><td>${pct(r.mcpShare)}</td><td>${num(r.totalTokens)}</td><td>${num(r.durationMs / 1000)} s</td></tr>`).join("") +
+    `</tbody></table></div>${rs.length ? "" : `<div class="empty">No runs match.</div>`}<p class="note">${rs.length} of ${RUNS.length} runs. Click a row for the call timeline and the patch.</p></div><div id="detail"></div>`;
+  return h;
+}
+async function showRun(id) {
+  openRun = id; const el = $("#detail"); if (!el) return;
+  el.innerHTML = `<div class="card"><div class="empty">loading…</div></div>`;
+  const d = await (await fetch("/api/run?id=" + encodeURIComponent(id))).json();
+  if (d.error) { el.innerHTML = `<div class="card">${esc(d.error)}</div>`; return; }
+  const m = d.manifest, calls = d.calls, agents = [...new Set(calls.map(c => c.agentId))];
+  // Prompt composition per call, one lane per agent
+  const w = 900, laneH = 70, left = 80, ph = agents.length * laneH + 30, maxP = Math.max(...calls.map(c => c.attribution ? (c.attribution.sys + c.attribution.def + c.attribution.call + c.attribution.res + c.attribution.text) : c.usage.inputTokens + c.usage.cacheReadTokens + c.usage.cacheWriteTokens), 1);
+  const bw = Math.max(2, Math.min(40, (w - left - 10) / Math.max(calls.length, 1) - 1)); let s = "", x = left;
+  agents.forEach((a, i) => s += `<text class="muted" x="${left - 6}" y="${12 + i * laneH + laneH / 2}" text-anchor="end">${esc(a)}</text><line class="axis" x1="${left}" x2="${w}" y1="${i * laneH + laneH + 4}" y2="${i * laneH + laneH + 4}"/>`);
+  calls.forEach(c => {
+    const li = agents.indexOf(c.agentId), base = 12 + li * laneH + laneH - 12, at = c.attribution;
+    if (at) { let yy = base; [["sys", at.sys], ["def", at.def], ["call", at.call], ["res", at.res], ["text", at.text]].forEach(([k, v]) => { const hh = (laneH - 18) * v / maxP; yy -= hh; s += `<rect x="${x}" y="${yy}" width="${bw}" height="${hh}" fill="var(--s-${k})" data-tip="${esc(`${c.agentId} turn ${c.turn} · ${k}: ${num(v)} tokens`)}"/>`; }); }
+    else { const v = c.usage.inputTokens + c.usage.cacheReadTokens + c.usage.cacheWriteTokens, hh = (laneH - 18) * v / maxP; s += `<rect x="${x}" y="${base - hh}" width="${bw}" height="${hh}" fill="var(--s-sys)" data-tip="${esc(`${c.agentId} turn ${c.turn}: ${num(v)} prompt tokens`)}"/>`; }
+    x += bw + 1;
+  });
+  const cum = []; let acc = 0; calls.forEach(c => { acc += c.costUsd; cum.push(acc); });
+  const cpts = cum.map((v, i) => [i + 1, v]);
+  el.innerHTML = `<div class="card"><h2>${esc(m.runId)} ${d.verdict ? (d.verdict.resolved ? `<span class="pill good">resolved</span>` : `<span class="pill bad">not resolved</span>`) : ""}</h2>
+    <p class="note">Prompt size of every model call, in call order, split by source. Taller bars mean the context grew.</p>
+    ${svg(w, ph, s)}${legend(SOURCES.map(([k, n]) => ({ name: n, color: `var(--s-${k})` })))}</div>
+    <div class="two"><div class="card"><h2>Cumulative cost</h2><p class="note">Run limit: ${usd(m.maxCostUsd)}.</p>${scatter({ series: [{ name: "cost", color: "var(--accent)", points: cpts }], xTitle: "model call #", yTitle: "USD", yFmt: usd, xFmt: v => v.toFixed(0), yMax: acc * 1.15 })}</div>
+    <div class="card"><h2>Manifest</h2><dl>${[["config", m.config + " " + m.variant], ["task", m.instanceId], ["image", m.image], ["model", m.model], ["status", m.status + (m.error ? " — " + m.error : "")], ["stop reason", m.stopReason], ["agents / calls", m.agents + " / " + m.calls], ["tokens in / out", num(m.inputTokens) + " / " + num(m.outputTokens)], ["cache read / write", num(m.cacheReadTokens) + " / " + num(m.cacheWriteTokens)], ["cost", usd(m.costUsd)], ["duration", num(m.durationMs / 1000) + " s"], ["started", m.startedAt], ["harness", m.harnessVersion]].map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl></div></div>
+    <div class="card"><h2>Patch</h2><pre>${esc(d.patch || "(empty patch)")}</pre></div>`;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function box(x, y, w, h, t, c = "var(--line)") { return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="${c}" fill-opacity=".35" stroke="${c}"/><text x="${x + w / 2}" y="${y + h / 2 + 4}" text-anchor="middle">${esc(t)}</text>`; }
+function arrow(x1, y1, x2, y2) { return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--muted)" marker-end="url(#ar)"/>`; }
+function viewDesigns() {
+  const defs = `<defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L8 4L0 8z" fill="var(--muted)"/></marker></defs>`;
+  const T = (c, mcp) => mcp ? box(0, 0, 0, 0, "") : "";
+  const card = (title, note, body, w = 420, h = 150) => `<div class="card"><h2>${title}</h2><p class="note">${note}</p>${svg(w, h, defs + body)}</div>`;
+  const llm = (x, y, t, c) => box(x, y, 90, 30, t, `var(--c-${c})`);
+  const tool = (x, y, t) => box(x, y, 90, 30, t);
+  return `<div class="two">` +
+    card("A · single agent, direct tools", "The baseline: one agent calls the six tools in-process.", llm(20, 60, "agent", "A") + arrow(110, 75, 160, 75) + tool(160, 60, "tool host") + arrow(250, 75, 300, 75) + box(300, 60, 100, 30, "container", "var(--s-sys)")) +
+    card("B · single agent, MCP tools", "Same agent and same tools; only the transport changes: an MCP server process.", llm(10, 60, "agent", "B") + arrow(100, 75, 130, 75) + box(130, 60, 80, 30, "MCP client", "var(--s-def)") + arrow(210, 75, 235, 75) + box(235, 60, 80, 30, "MCP server", "var(--s-def)") + arrow(315, 75, 335, 75) + box(335, 60, 80, 30, "container", "var(--s-sys)")) +
+    card("C · hub-and-spoke", "An orchestrator delegates to N parallel workers; every agent has its own MCP client and server (so N+1 sets of tool definitions: H2).", llm(160, 10, "orchestrator", "C") + [0, 1, 2].map(i => arrow(205, 40, 70 + i * 140, 90) + llm(25 + i * 140, 90, "worker " + (i + 1), "C")).join("") + [0, 1, 2].map(i => arrow(70 + i * 140, 120, 210, 140)).join("") + box(150, 132, 120, 16, "shared container", "var(--s-sys)"), 420, 160) +
+    card("D · coder-reviewer loop", "The coder edits; the reviewer reads the diff and can run tests; up to 3 rounds of feedback.", llm(40, 50, "coder", "D") + arrow(130, 60, 250, 60) + llm(250, 50, "reviewer", "D") + arrow(250, 80, 130, 80) + `<text class="muted" x="190" y="52" text-anchor="middle">diff</text><text class="muted" x="190" y="98" text-anchor="middle">feedback</text>` + box(150, 118, 120, 24, "container", "var(--s-sys)")) +
+    card("E · sequential pipeline", "Planner writes a plan, the coder implements it, the tester runs tests; one fix pass after a failed test report.", llm(10, 60, "planner", "E") + arrow(100, 75, 150, 75) + llm(150, 60, "coder", "E") + arrow(240, 75, 290, 75) + llm(290, 60, "tester", "E") + `<text class="muted" x="145" y="50" text-anchor="middle">plan</text><text class="muted" x="270" y="50" text-anchor="middle">diff</text>` + `<path d="M335 90 C335 130 195 130 195 92" fill="none" stroke="var(--muted)" marker-end="url(#ar)"/><text class="muted" x="265" y="140" text-anchor="middle">test report</text>`) +
+    `<div class="card"><h2>Held constant in every configuration</h2><ul><li>One agent loop; topologies only change prompts, tool sets and wiring.</li><li>Same model, same shared run budget, same 80k-token context policy and compaction.</li><li>Same six tools from one catalog; the MCP server wraps the same tool code as the direct host.</li><li>MCP only between agent and tools, trusted server, container without network.</li></ul></div></div>`;
+}
+
+function viewFairness() {
+  const checks = [["model", "Model"], ["maxPromptTokens", "Prompt cap (tokens)"], ["maxTotalTokens", "Total token cap"], ["maxCostUsd", "Cost cap (USD)"], ["maxTurns", "Turn cap"], ["systemPromptHash", "System prompt hash"], ["taskPromptHash", "Task prompt hash"]];
+  let h = `<div class="card"><h2>Settings that must be identical across configurations</h2><p class="note">Read from the run manifests. Any row with more than one value breaks the comparison.</p><table><thead><tr><th>setting</th><th>values seen</th><th>check</th></tr></thead><tbody>` +
+    checks.map(([k, n]) => { const vals = [...new Set(RUNS.map(r => r[k]))]; return `<tr><td>${n}</td><td style="text-align:left;white-space:normal">${vals.map(esc).join(", ") || "–"}</td><td>${vals.length <= 1 ? `<span class="pill good">identical</span>` : `<span class="pill bad">${vals.length} different</span>`}</td></tr>`; }).join("") + `</tbody></table></div>`;
+  const byCfg = c => new Set(RUNS.filter(r => r.config === c && r.status === "completed").map(r => r.instanceId)), cfgs = CONFIGS.filter(c => RUNS.some(r => r.config === c));
+  const all = new Set(RUNS.map(r => r.instanceId));
+  h += `<div class="card"><h2>Same tasks everywhere?</h2><p class="note">Completed runs per configuration against all tasks that appear in any run.</p><table><thead><tr><th>config</th><th>tasks completed</th><th>missing</th><th>repeats per task</th></tr></thead><tbody>` +
+    cfgs.map(c => { const s = byCfg(c), rs = RUNS.filter(r => r.config === c).length; return `<tr><td><b style="color:${color(c)}">${c}</b></td><td>${s.size} / ${all.size}</td><td>${all.size - s.size ? `<span class="pill bad">${all.size - s.size}</span>` : `<span class="pill good">0</span>`}</td><td>${num(rs / Math.max(all.size, 1), 1)}</td></tr>`; }).join("") + `</tbody></table></div>`;
+  const att = RUNS.filter(r => r.status === "completed").map(r => Math.abs(r.attrSysUsd + r.attrDefUsd + r.attrCallUsd + r.attrResUsd + r.attrTextUsd - r.costUsd) / Math.max(r.costUsd, 1e-9));
+  h += `<div class="card"><h2>Attribution reconciles with billed cost</h2><p class="note">Per run: |sum of the five attributed parts − billed cost| / billed cost. Target: below 2%.</p>` +
+    (att.length ? `<p>Worst run: <b>${(Math.max(...att) * 100).toFixed(2)}%</b> · mean ${(mean(att) * 100).toFixed(2)}% · ${att.filter(a => a > 0.02).length} runs above 2% ${Math.max(...att) <= 0.02 ? `<span class="pill good">ok</span>` : `<span class="pill bad">check</span>`}</p>` : `<div class="empty">no completed runs</div>`) + `</div>`;
+  return h;
+}
+
+/* ---------- shell ---------- */
+const VIEWS = [viewOverview, viewCost, viewStructure, viewRuns, viewDesigns, viewFairness];
+function render() {
+  $("#tabs").innerHTML = TABS.map((t, i) => `<button role="tab" aria-selected="${i === tab}" data-i="${i}">${t}</button>`).join("");
+  const demo = RUNS.some(r => r.model === "demo-fake");
+  const empty = !RUNS.length && tab !== 4;
+  $("#view").innerHTML = (demo ? `<div class="banner"><b>Demo data.</b> These runs are FAKE, generated to try the UI. Do not use them in the report.</div>` : "") +
+    (empty ? `<div class="card"><div class="empty">No runs found in <code>${esc(DATA.root)}</code> yet. Run a batch, or try <code>demo-data</code> to see the UI with fake numbers.</div></div>` : VIEWS[tab]());
+  if (tab === 3) { bindRuns(); if (openRun) showRun(openRun); }
+}
+function bindRuns() {
+  $("#fc").onchange = e => { runFilter.config = e.target.value; render(); };
+  $("#fs").onchange = e => { runFilter.status = e.target.value; render(); };
+  $("#fr").onchange = e => { runFilter.resolved = e.target.value; render(); };
+  $("#fq").oninput = e => { runFilter.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("#fq"); q.focus(); q.setSelectionRange(pos, pos); };
+  document.querySelectorAll("th.sort").forEach(th => th.onclick = () => { const k = th.dataset.k; runSort = { key: k, dir: runSort.key === k ? -runSort.dir : 1 }; render(); });
+  document.querySelectorAll("tr.click").forEach(tr => tr.onclick = () => showRun(tr.dataset.id));
+}
+$("#tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (b) { tab = +b.dataset.i; render(); } });
+const tip = $("#tip");
+document.addEventListener("mousemove", e => {
+  const t = e.target.closest && e.target.closest("[data-tip]");
+  if (!t) { tip.style.display = "none"; return; }
+  tip.textContent = t.dataset.tip; tip.style.display = "block"; tip.style.left = Math.min(e.clientX + 12, innerWidth - 330) + "px"; tip.style.top = e.clientY + 14 + "px";
+});
+async function load() {
+  try {
+    DATA = await (await fetch("/api/data")).json();
+    RUNS = DATA.runs.map(derive);
+    $("#root").textContent = `${DATA.root} · ${RUNS.length} runs · loaded ${new Date().toLocaleTimeString()} (reload the page to refresh)`;
+  } catch (e) { $("#root").textContent = "Could not load /api/data: " + e; DATA = { root: "?", runs: [] }; RUNS = []; }
+  render();
+}
+load();
+</script>
+</body>
+</html>

@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Prompts\*.md" />
+    <EmbeddedResource Include="Ui\index.html" />
   </ItemGroup>
 
 </Project>

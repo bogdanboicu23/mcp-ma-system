@@ -63,6 +63,11 @@ command. 72 offline unit tests.
 **The MCP projects have never been compiled.** NuGet was blocked where they were written. Build on the Mac first
 (`dotnet build`), fix any SDK API mismatch (version pinned in two csproj files), then run `dotnet run --project src/Runner -- mcp-check`.
 
+Results UI (read-only, offline, no extra packages): `dotnet run --project src/Runner -- ui` opens http://127.0.0.1:5080 with
+overview (resolve rate with Wilson intervals, cost per resolved task), cost split by source and the H2 fit, task structure
+(RQ3), a run browser with a per-call timeline and patch, the five designs and fairness checks. To try it with FAKE numbers
+first: `-- demo-data --out results-demo` then `-- ui --out results-demo` (the page shows a demo banner).
+
 Not done yet: everything that needs the PC or API credits to verify (see caveats), the pilot, per-call MCP latency
 logging, the final analysis.
 

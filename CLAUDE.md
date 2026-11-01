@@ -55,6 +55,8 @@ conversation caching, `TaskLabeler` + `TaskSelector.SelectStratified`, synthetic
 (`src/Agents.Mcp`: `McpToolHost`, `McpToolHostFactory`), config B, `--transport direct|mcp`, `mcp-check`, `ToolHostTracker`.
 The MCP projects were NOT compiled (no NuGet in the sandbox): build them first on a dev machine.
 
+Results UI: `Agents.Core/Ui` (`UiServer` on HttpListener, embedded `index.html`, `DemoData` for fake runs), Runner `ui` and `demo-data`.
+
 Next, in order (details: `docs/implementation-plan.md`):
 1. On the Mac: `dotnet build`, fix any MCP SDK mismatch (pin in `src/Mcp.Server` and `src/Agents.Mcp`), `dotnet test`, `mcp-check`.
 2. On the Windows PC, once API credits exist: VERIFY workstream 1 (fetch tasks, `check`, `run --dry`, evaluator on a gold patch,

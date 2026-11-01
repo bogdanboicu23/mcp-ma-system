@@ -27,6 +27,8 @@ internal static class Cli
         Common options: --tasks-file tasks/swebench_verified.jsonl  --out results  --model claude-haiku-5-5
         Limits (identical for all configs): --max-prompt-tokens 80000 --max-total-tokens 3000000 --max-cost 0.50 --max-turns 50
         Tools:  A = direct, B = single agent over MCP, C/D/E = MCP by default (--transport direct|mcp, --mcp-server <Mcp.Server.dll>)
+        ui     [--out results] [--port 5080]   local web UI over the results folder (read-only, offline)
+        demo-data [--out results-demo]   write FAKE runs so the UI can be tried before any paid run
         mcp-check                        free: the MCP server and the direct host must return identical tool output
         Config C: --workers 2|3|4 --exposure full|role     Config D: --rounds 3
         Container: --memory-gb 4 --cpus 2 --prelude "<shell prefix>" --workdir /testbed
@@ -58,6 +60,8 @@ internal static class Cli
                 "batch" => await BatchAsync(args, cts.Token),
                 "eval" => await EvalAsync(args, cts.Token),
                 "report" => Report(args),
+                "ui" => await UiAsync(args, cts.Token),
+                "demo-data" => DemoDataCommand(args),
                 _ => PrintUsage(),
             };
         }
@@ -121,6 +125,38 @@ internal static class Cli
         Console.WriteLine($"Wrote {labels.Count} labels to {path} (theta {theta:0.00}).");
         Console.WriteLine($"  parallel: {parallel}, sequential: {labels.Count - parallel}");
         Console.WriteLine($"  single-file patches: {labels.Count(l => l.Files == 1)}, single-hunk: {labels.Count(l => l.Hunks == 1)}");
+        return 0;
+    }
+
+    // -------------------------------------------------------------------- ui
+
+    private static async Task<int> UiAsync(CliArgs args, CancellationToken ct)
+    {
+        var store = new RunStore(args.Get("out", "results"));
+        var port = args.GetInt("port", 5080);
+        var url = $"http://127.0.0.1:{port}/";
+        Console.WriteLine($"Results UI for {store.Root}: {url}   (Ctrl+C stops it; reload the page to see new runs)");
+        if (!args.Has("no-open"))
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception)
+            {
+                // no default browser: the URL above is enough
+            }
+        }
+
+        await new Agents.Core.Ui.UiServer(store, args.Get("labels")).ServeAsync(port, ct);
+        return 0;
+    }
+
+    private static int DemoDataCommand(CliArgs args)
+    {
+        var dir = args.Get("out", "results-demo");
+        var n = Agents.Core.Ui.DemoData.Generate(dir);
+        Console.WriteLine($"Wrote {n} FAKE runs to {dir}. View them with: ui --out {dir}");
         return 0;
     }
 
