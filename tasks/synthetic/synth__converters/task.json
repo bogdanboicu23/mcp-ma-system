@@ -1,0 +1,14 @@
+{
+  "instance_id": "synth__converters",
+  "repo": "synthetic/converters",
+  "base_commit": "",
+  "problem_statement": "The package `converters` has three modules whose functions are not implemented yet (they raise NotImplementedError). Implement them:\n\n- length.km_to_miles(km): kilometres to miles, multiply by 0.621371.\n- mass.kg_to_pounds(kg): kilograms to pounds, multiply by 2.20462.\n- temperature.c_to_f(c): degrees Celsius to Fahrenheit, c * 9 / 5 + 32.",
+  "fail_to_pass": [
+    "hidden_tests"
+  ],
+  "pass_to_pass": [],
+  "patch": "diff --git a/converters/length.py b/converters/length.py\nindex b997032..0702925 100644\n--- a/converters/length.py\n+++ b/converters/length.py\n@@ -1,2 +1,2 @@\n def km_to_miles(km):\n-    raise NotImplementedError\n+    return km * 0.621371\ndiff --git a/converters/mass.py b/converters/mass.py\nindex 1fa1142..ff0f0b3 100644\n--- a/converters/mass.py\n+++ b/converters/mass.py\n@@ -1,2 +1,2 @@\n def kg_to_pounds(kg):\n-    raise NotImplementedError\n+    return kg * 2.20462\ndiff --git a/converters/temperature.py b/converters/temperature.py\nindex c69e7fb..1a5d315 100644\n--- a/converters/temperature.py\n+++ b/converters/temperature.py\n@@ -1,2 +1,2 @@\n def c_to_f(c):\n-    raise NotImplementedError\n+    return c * 9 / 5 + 32\n",
+  "test_patch": "",
+  "version": "1",
+  "intended_label": "parallel"
+}

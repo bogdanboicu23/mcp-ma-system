@@ -1,0 +1,14 @@
+{
+  "instance_id": "synth__validation_error",
+  "repo": "synthetic/validation_error",
+  "base_commit": "",
+  "problem_statement": "Add a dedicated exception for bad input:\n\n- in `app/errors.py`, define `class ValidationError(AppError)`;\n- `app/validators.py` currently raises ValueError in `check_age(age)` for ages outside 0-150; it must raise ValidationError instead;\n- `app/api.py` has `handle(age)` that returns (200, \"ok\") for good input; it must return (400, <the error message>) when `check_age` raises ValidationError. Other exceptions must still propagate.",
+  "fail_to_pass": [
+    "hidden_tests"
+  ],
+  "pass_to_pass": [],
+  "patch": "diff --git a/app/api.py b/app/api.py\nindex 7c9b2e9..b1beda0 100644\n--- a/app/api.py\n+++ b/app/api.py\n@@ -1,5 +1,9 @@\n+from app.errors import ValidationError\n from app.validators import check_age\n \n def handle(age):\n-    check_age(age)\n+    try:\n+        check_age(age)\n+    except ValidationError as e:\n+        return 400, str(e)\n     return 200, 'ok'\ndiff --git a/app/errors.py b/app/errors.py\nindex abce177..ae5644c 100644\n--- a/app/errors.py\n+++ b/app/errors.py\n@@ -1,2 +1,6 @@\n class AppError(Exception):\n     pass\n+\n+\n+class ValidationError(AppError):\n+    pass\ndiff --git a/app/validators.py b/app/validators.py\nindex 3d8bd90..0c75ec3 100644\n--- a/app/validators.py\n+++ b/app/validators.py\n@@ -1,4 +1,6 @@\n+from app.errors import ValidationError\n+\n def check_age(age):\n     if not 0 <= age <= 150:\n-        raise ValueError(f'invalid age: {age}')\n+        raise ValidationError(f'invalid age: {age}')\n     return age\n",
+  "test_patch": "",
+  "version": "1",
+  "intended_label": "sequential"
+}

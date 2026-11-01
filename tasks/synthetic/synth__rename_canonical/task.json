@@ -1,0 +1,14 @@
+{
+  "instance_id": "synth__rename_canonical",
+  "repo": "synthetic/rename_canonical",
+  "base_commit": "",
+  "problem_statement": "In `names/utils.py`, rename the function `normalize_name` to `canonical_name` (behaviour unchanged). Update every use of it in the package so nothing breaks, and make sure `normalize_name` no longer exists in `names/utils.py`.",
+  "fail_to_pass": [
+    "hidden_tests"
+  ],
+  "pass_to_pass": [],
+  "patch": "diff --git a/names/search.py b/names/search.py\nindex a451a5f..8bc8151 100644\n--- a/names/search.py\n+++ b/names/search.py\n@@ -1,4 +1,4 @@\n-from names.utils import normalize_name\n+from names.utils import canonical_name\n \n def matches(query, raw):\n-    return normalize_name(query) == normalize_name(raw)\n+    return canonical_name(query) == canonical_name(raw)\ndiff --git a/names/users.py b/names/users.py\nindex 37722be..6ccdba7 100644\n--- a/names/users.py\n+++ b/names/users.py\n@@ -1,4 +1,4 @@\n-from names.utils import normalize_name\n+from names.utils import canonical_name\n \n def register(raw):\n-    return {'name': normalize_name(raw), 'active': True}\n+    return {'name': canonical_name(raw), 'active': True}\ndiff --git a/names/utils.py b/names/utils.py\nindex 6d5333a..b1626a9 100644\n--- a/names/utils.py\n+++ b/names/utils.py\n@@ -1,2 +1,2 @@\n-def normalize_name(name):\n+def canonical_name(name):\n     return ' '.join(name.split()).title()\n",
+  "test_patch": "",
+  "version": "1",
+  "intended_label": "sequential"
+}

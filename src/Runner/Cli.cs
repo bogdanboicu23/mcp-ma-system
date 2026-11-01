@@ -22,6 +22,7 @@ internal static class Cli
           eval   --config A --repeat 1     build predictions and run the official SWE-bench evaluator
           report                           write results/report.csv and print per-configuration totals
 
+        Synthetic suite: add --synthetic [dir] to select, check, run, batch and eval (needs the image from tools/synthetic/Dockerfile)
         Common options: --tasks-file tasks/swebench_verified.jsonl  --out results  --model claude-haiku-5-5
         Limits (identical for all configs): --max-prompt-tokens 80000 --max-total-tokens 3000000 --max-cost 0.50 --max-turns 50
         Config C: --workers 2|3|4 --exposure full|role     Config D: --rounds 3
@@ -128,7 +129,7 @@ internal static class Cli
         var image = SweBenchImage.Name(task.InstanceId, options);
         Console.WriteLine($"Starting {image} (the first start downloads the image, this can take minutes)...");
 
-        var provider = new DockerEnvironmentProvider(options, args.GetInt("memory-gb", 4), args.GetDouble("cpus", 2));
+        var provider = Environments(args);
         await using var environment = await provider.StartAsync(task, "check-" + task.InstanceId, ct);
         Console.WriteLine("OK: " + environment.Description);
 
@@ -242,6 +243,15 @@ internal static class Cli
         var repeat = args.GetInt("repeat", 1);
         var evalRunId = args.Get("run-id", $"{config}-r{repeat}-{DateTime.UtcNow:yyyyMMdd-HHmm}");
 
+        if (args.Has("synthetic"))
+        {
+            // The synthetic suite has its own hidden tests; no SWE-bench evaluator involved.
+            var (done, solved) = await SyntheticEvaluator.EvaluateAsync(
+                SyntheticDir(args), store, config, repeat, args.Get("synthetic-image", "mamcp-synth"), evalRunId, ct);
+            Console.WriteLine($"Evaluated {done} synthetic runs; resolved {solved}.");
+            return done == 0 ? 1 : 0;
+        }
+
         var predictions = Predictions.Build(store, config, repeat);
         if (predictions.Count == 0)
         {
@@ -348,6 +358,11 @@ internal static class Cli
     // --------------------------------------------------------------- helpers
 
     private static string TasksFile(CliArgs args) =>
+        args.Get("tasks-file") is null && args.Has("synthetic")
+            ? Path.Combine(SyntheticDir(args), "tasks.jsonl")
+            : TasksFileDefault(args);
+
+    private static string TasksFileDefault(CliArgs args) =>
         args.Get("tasks-file", Path.Combine("tasks", "swebench_verified.jsonl"));
 
     private static SweBenchTask LoadTask(CliArgs args)
@@ -375,6 +390,16 @@ internal static class Cli
             var other => throw new ArgumentException($"--exposure must be 'full' or 'role', got '{other}'."),
         });
 
+    /// <summary>SWE-bench images by default; with <c>--synthetic [dir]</c> the hand-written suite in its own small image.</summary>
+    private static ITaskEnvironmentProvider Environments(CliArgs args) =>
+        args.Has("synthetic")
+            ? new SyntheticEnvironmentProvider(
+                SyntheticDir(args), args.Get("synthetic-image", "mamcp-synth"), args.GetInt("memory-gb", 2), args.GetDouble("cpus", 1))
+            : new DockerEnvironmentProvider(ImageOptions(args), args.GetInt("memory-gb", 4), args.GetDouble("cpus", 2));
+
+    private static string SyntheticDir(CliArgs args) =>
+        args.Get("synthetic") is { } v && v != "true" ? v : Path.Combine("tasks", "synthetic");
+
     private static SweBenchImageOptions ImageOptions(CliArgs args)
     {
         var defaults = new SweBenchImageOptions();
@@ -392,8 +417,7 @@ internal static class Cli
         var limits = Limits(args);
         var system = Configs.Create(args.Get("config", "A"), prompts, limits, Hub(args), args.GetInt("rounds", 3));
         IModelClient model = dry ? DryModel() : RealModel(args);
-        var environments = new DockerEnvironmentProvider(
-            ImageOptions(args), args.GetInt("memory-gb", 4), args.GetDouble("cpus", 2));
+        var environments = Environments(args);
         // Live runs measure each tool set's definition tokens once, exactly (free token-counting endpoint).
         var attributor = model is AnthropicHttpClient live && !args.Has("no-measure")
             ? new TokenAttributor(measureDefinitions: (tools, ct) => live.MeasureDefinitionsAsync(tools, ct))

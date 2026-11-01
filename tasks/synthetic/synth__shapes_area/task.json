@@ -1,0 +1,14 @@
+{
+  "instance_id": "synth__shapes_area",
+  "repo": "synthetic/shapes_area",
+  "base_commit": "",
+  "problem_statement": "`shapes/geometry.py` has `area(w, h)` for rectangles. Generalize it to `area(kind, **dims)`:\n\n- area(\"rect\", w=2, h=3) -> 6\n- area(\"circle\", r=1) -> math.pi * r ** 2\n- area(\"triangle\", b=4, h=3) -> 6.0\n- any other kind raises ValueError\n\nThe old two-argument form must no longer exist. Update the callers in `shapes/report.py` (`total_area` takes a list of (w, h) rectangles) and `shapes/cli.py` (`describe(w, h)` returns \"w x h = area\") so that they behave exactly as before.",
+  "fail_to_pass": [
+    "hidden_tests"
+  ],
+  "pass_to_pass": [],
+  "patch": "diff --git a/shapes/cli.py b/shapes/cli.py\nindex 2bce34d..3014423 100644\n--- a/shapes/cli.py\n+++ b/shapes/cli.py\n@@ -1,4 +1,4 @@\n from shapes.geometry import area\n \n def describe(w, h):\n-    return f'{w} x {h} = {area(w, h)}'\n+    return f\"{w} x {h} = {area('rect', w=w, h=h)}\"\ndiff --git a/shapes/geometry.py b/shapes/geometry.py\nindex a3c3c78..2ddd472 100644\n--- a/shapes/geometry.py\n+++ b/shapes/geometry.py\n@@ -1,2 +1,10 @@\n-def area(w, h):\n-    return w * h\n+import math\n+\n+def area(kind, **dims):\n+    if kind == 'rect':\n+        return dims['w'] * dims['h']\n+    if kind == 'circle':\n+        return math.pi * dims['r'] ** 2\n+    if kind == 'triangle':\n+        return dims['b'] * dims['h'] / 2\n+    raise ValueError(f'unknown shape {kind}')\ndiff --git a/shapes/report.py b/shapes/report.py\nindex e5aa914..bb4f08f 100644\n--- a/shapes/report.py\n+++ b/shapes/report.py\n@@ -1,4 +1,4 @@\n from shapes.geometry import area\n \n def total_area(rects):\n-    return sum(area(w, h) for w, h in rects)\n+    return sum(area('rect', w=w, h=h) for w, h in rects)\n",
+  "test_patch": "",
+  "version": "1",
+  "intended_label": "sequential"
+}

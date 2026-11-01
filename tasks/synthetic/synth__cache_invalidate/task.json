@@ -1,0 +1,14 @@
+{
+  "instance_id": "synth__cache_invalidate",
+  "repo": "synthetic/cache_invalidate",
+  "base_commit": "",
+  "problem_statement": "`kv/service.py` serves reads through a cache, but `Service.update` writes only to the store, so `get` keeps returning the old value after an update. Fix this:\n\n- add `Cache.invalidate(key)` in `kv/cache.py` (removing a missing key must not fail);\n- `Service.update(key, value)` must make the next `get(key)` return the new value;\n- add `Service.delete(key)`, which removes the key from the store and the cache; `get` of a deleted key returns None.",
+  "fail_to_pass": [
+    "hidden_tests"
+  ],
+  "pass_to_pass": [],
+  "patch": "diff --git a/kv/cache.py b/kv/cache.py\nindex e936d4f..7196f3c 100644\n--- a/kv/cache.py\n+++ b/kv/cache.py\n@@ -7,3 +7,6 @@ class Cache:\n \n     def put(self, key, value):\n         self.items[key] = value\n+\n+    def invalidate(self, key):\n+        self.items.pop(key, None)\ndiff --git a/kv/service.py b/kv/service.py\nindex aae2287..e5127ce 100644\n--- a/kv/service.py\n+++ b/kv/service.py\n@@ -16,3 +16,8 @@ class Service:\n \n     def update(self, key, value):\n         self.store.set(key, value)\n+        self.cache.invalidate(key)\n+\n+    def delete(self, key):\n+        self.store.remove(key)\n+        self.cache.invalidate(key)\n",
+  "test_patch": "",
+  "version": "1",
+  "intended_label": "sequential"
+}

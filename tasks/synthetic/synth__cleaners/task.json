@@ -1,0 +1,14 @@
+{
+  "instance_id": "synth__cleaners",
+  "repo": "synthetic/cleaners",
+  "base_commit": "",
+  "problem_statement": "The package `cleaners` has three modules whose functions raise NotImplementedError. Implement them:\n\n- html.strip_html(text): remove anything between '<' and '>' (including the brackets) and return the rest.\n- spaces.collapse_ws(text): replace every run of whitespace (spaces, tabs, newlines) with a single space and strip the ends.\n- digits.mask_digits(text): replace every digit with '#'.",
+  "fail_to_pass": [
+    "hidden_tests"
+  ],
+  "pass_to_pass": [],
+  "patch": "diff --git a/cleaners/digits.py b/cleaners/digits.py\nindex 2e02600..fbc28a9 100644\n--- a/cleaners/digits.py\n+++ b/cleaners/digits.py\n@@ -1,2 +1,2 @@\n def mask_digits(text):\n-    raise NotImplementedError\n+    return ''.join('#' if c.isdigit() else c for c in text)\ndiff --git a/cleaners/html.py b/cleaners/html.py\nindex 9126d16..068f854 100644\n--- a/cleaners/html.py\n+++ b/cleaners/html.py\n@@ -1,2 +1,4 @@\n+import re\n+\n def strip_html(text):\n-    raise NotImplementedError\n+    return re.sub(r'<[^>]*>', '', text)\ndiff --git a/cleaners/spaces.py b/cleaners/spaces.py\nindex 8079995..16556f0 100644\n--- a/cleaners/spaces.py\n+++ b/cleaners/spaces.py\n@@ -1,2 +1,2 @@\n def collapse_ws(text):\n-    raise NotImplementedError\n+    return ' '.join(text.split())\n",
+  "test_patch": "",
+  "version": "1",
+  "intended_label": "parallel"
+}

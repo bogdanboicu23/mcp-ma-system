@@ -1,0 +1,14 @@
+{
+  "instance_id": "synth__formatters",
+  "repo": "synthetic/formatters",
+  "base_commit": "",
+  "problem_statement": "The package `formatters` has three modules whose functions raise NotImplementedError. Implement them:\n\n- slug.slugify(text): lower-case the text, replace every run of non-alphanumeric characters with a single '-', and strip '-' from both ends.\n- title.title_case(text): capitalize each word, except the small words a, an, the, of, in, on, which stay lower-case unless they are the first word.\n- clip.clip(text, n): return text unchanged if len(text) <= n, otherwise the first n-3 characters followed by '...'. n is at least 3.",
+  "fail_to_pass": [
+    "hidden_tests"
+  ],
+  "pass_to_pass": [],
+  "patch": "diff --git a/formatters/clip.py b/formatters/clip.py\nindex a6700aa..2f961b3 100644\n--- a/formatters/clip.py\n+++ b/formatters/clip.py\n@@ -1,2 +1,2 @@\n def clip(text, n):\n-    raise NotImplementedError\n+    return text if len(text) <= n else text[:n - 3] + '...'\ndiff --git a/formatters/slug.py b/formatters/slug.py\nindex ca1a85a..bb1328f 100644\n--- a/formatters/slug.py\n+++ b/formatters/slug.py\n@@ -1,2 +1,4 @@\n+import re\n+\n def slugify(text):\n-    raise NotImplementedError\n+    return re.sub(r'[^a-z0-9]+', '-', text.lower()).strip('-')\ndiff --git a/formatters/title.py b/formatters/title.py\nindex ba31a20..b9be041 100644\n--- a/formatters/title.py\n+++ b/formatters/title.py\n@@ -1,2 +1,5 @@\n+SMALL = {'a', 'an', 'the', 'of', 'in', 'on'}\n+\n def title_case(text):\n-    raise NotImplementedError\n+    words = text.split()\n+    return ' '.join(w if (i > 0 and w.lower() in SMALL) else w.capitalize() for i, w in enumerate(words))\n",
+  "test_patch": "",
+  "version": "1",
+  "intended_label": "parallel"
+}

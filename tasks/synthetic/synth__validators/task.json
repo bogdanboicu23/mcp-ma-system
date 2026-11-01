@@ -1,0 +1,14 @@
+{
+  "instance_id": "synth__validators",
+  "repo": "synthetic/validators",
+  "base_commit": "",
+  "problem_statement": "The package `validators` has three modules, `email`, `phone` and `zipcode`. Each one exposes `is_valid(s)` returning a bool, but all three currently raise NotImplementedError. Implement them:\n\n- email: valid if it has exactly one '@', a non-empty part before it, a part after it that contains a '.', and no spaces.\n- phone: after removing spaces and '-' characters, valid if what is left is exactly 10 digits.\n- zipcode: valid if it is exactly 5 digits, or 5 digits, a '-' and 4 digits (for example 12345-6789).",
+  "fail_to_pass": [
+    "hidden_tests"
+  ],
+  "pass_to_pass": [],
+  "patch": "diff --git a/validators/email.py b/validators/email.py\nindex a479e68..abef309 100644\n--- a/validators/email.py\n+++ b/validators/email.py\n@@ -1,2 +1,5 @@\n def is_valid(s):\n-    raise NotImplementedError\n+    if ' ' in s or s.count('@') != 1:\n+        return False\n+    local, domain = s.split('@')\n+    return bool(local) and '.' in domain\ndiff --git a/validators/phone.py b/validators/phone.py\nindex a479e68..553f4fc 100644\n--- a/validators/phone.py\n+++ b/validators/phone.py\n@@ -1,2 +1,3 @@\n def is_valid(s):\n-    raise NotImplementedError\n+    digits = s.replace(' ', '').replace('-', '')\n+    return len(digits) == 10 and digits.isdigit()\ndiff --git a/validators/zipcode.py b/validators/zipcode.py\nindex a479e68..c5253d0 100644\n--- a/validators/zipcode.py\n+++ b/validators/zipcode.py\n@@ -1,2 +1,4 @@\n def is_valid(s):\n-    raise NotImplementedError\n+    if len(s) == 5:\n+        return s.isdigit()\n+    return len(s) == 10 and s[:5].isdigit() and s[5] == '-' and s[6:].isdigit()\n",
+  "test_patch": "",
+  "version": "1",
+  "intended_label": "parallel"
+}

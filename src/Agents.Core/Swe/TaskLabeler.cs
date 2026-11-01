@@ -14,7 +14,7 @@ public sealed record TaskLabel(
 /// <summary>
 /// Labels the structure of a task from its reference patch (RQ3), by the rule written in report section 3.2.2.
 /// The hunks of the patch are nodes of a graph. Two hunks are connected when they are in the same file, or when one
-/// of them defines (def / class) a name that the other one changes or uses. A name that is defined in more than one
+/// of them defines or sits inside (def / class, also as unchanged context) a name that the other one changes or uses. A name that is defined in more than one
 /// hunk (for example <c>is_valid</c> in three modules) says nothing about a dependency and is ignored.
 /// With connected-component sizes s_i (changed lines), the parallel fraction is
 /// <c>p = 1 - max(s_i) / sum(s_i)</c>: with unlimited workers, the largest component is the critical path.
@@ -179,6 +179,17 @@ public static class TaskLabeler
                 if (end >= 0 && end + 2 < raw.Length)
                 {
                     Collect(current, raw[(end + 2)..]); // the function the hunk sits in
+                }
+            }
+            else if (current is not null && raw.Length > 1 && raw[0] == ' ')
+            {
+                // A def/class line that is only context still names the function this hunk is changing.
+                foreach (Match m in Definition.Matches(raw))
+                {
+                    if (!Ignored.Contains(m.Groups[1].Value) && m.Groups[1].Value.Length >= 3)
+                    {
+                        current.Defined.Add(m.Groups[1].Value);
+                    }
                 }
             }
             else if (current is not null && raw.Length > 0 && (raw[0] == '+' || raw[0] == '-')
