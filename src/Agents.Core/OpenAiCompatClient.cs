@@ -66,9 +66,42 @@ public sealed class OpenAiCompatClient : IModelClient
 
     public string ModelId { get; }
 
+    private int _malformedToolCalls;
+
+    /// <summary>How many times the provider rejected a malformed tool call (each one was retried). Report it with the results.</summary>
+    public int MalformedToolCalls => Volatile.Read(ref _malformedToolCalls);
+
+    private static string FailedGeneration(string errorBody)
+    {
+        try
+        {
+            return JsonNode.Parse(errorBody)?["error"]?["failed_generation"]?.ToString() ?? string.Empty;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>The same request plus one corrective user message (kept out of the stored history).</summary>
+    internal JsonObject BuildRepairBody(ModelRequest request, string failedGeneration)
+    {
+        var body = BuildBody(request);
+        var shown = failedGeneration.Length > 600 ? failedGeneration[..600] + "..." : failedGeneration;
+        ((JsonArray)body["messages"]!).Add(new JsonObject
+        {
+            ["role"] = "user",
+            ["content"] = "Your previous tool call could not be parsed because its arguments were not valid JSON"
+                          + (shown.Length > 0 ? $" (you wrote: {shown})" : string.Empty)
+                          + ". Make the tool call again with strictly valid JSON arguments: balanced braces and brackets, double-quoted strings, no trailing text.",
+        });
+        return body;
+    }
+
     public async Task<ModelResponse> SendAsync(ModelRequest request, CancellationToken ct = default)
     {
         var payload = BuildBody(request).ToJsonString();
+        var malformed = 0;
 
         for (var attempt = 1; ; attempt++)
         {
@@ -115,6 +148,15 @@ public sealed class OpenAiCompatClient : IModelClient
                     if (malformedToolCall)
                     {
                         wait = TimeSpan.FromSeconds(1);
+                        malformed++;
+                        Interlocked.Increment(ref _malformedToolCalls);
+
+                        // The first retry just asks again (often enough). After that the model is told what went wrong,
+                        // because the same request tends to give the same broken call.
+                        if (malformed >= 2)
+                        {
+                            payload = BuildRepairBody(request, FailedGeneration(text)).ToJsonString();
+                        }
                     }
 
                     if (response.Headers.RetryAfter?.Delta is { } delta)

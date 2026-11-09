@@ -123,6 +123,11 @@ public class OpenAiCompatTests
 
         Assert.Equal("end_turn", response.StopReason);
         Assert.Equal(3, handler.Bodies.Count);
+        Assert.Equal(2, client.MalformedToolCalls);
+        // First retry: same request. Second retry: the model is told what was wrong.
+        Assert.True(!handler.Bodies[1].Contains("could not be parsed"));
+        Assert.True(handler.Bodies[2].Contains("could not be parsed"));
+        Assert.True(handler.Bodies[2].Contains("strictly valid JSON"));
     }
 
     [Fact]
