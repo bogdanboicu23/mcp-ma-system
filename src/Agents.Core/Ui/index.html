@@ -94,7 +94,7 @@ const SOURCES = [["sys", "system & task"], ["def", "tool definitions"], ["call",
 const TABS = ["Overview", "Cost (RQ2)", "Task structure (RQ3)", "Runs", "Designs", "Fairness"];
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const usd = v => v == null || isNaN(v) ? "–" : "$" + (v >= 10 ? v.toFixed(2) : v.toFixed(v >= 1 ? 2 : 3));
+const usd = v => v == null || isNaN(v) ? "–" : "$" + (v >= 10 ? v.toFixed(2) : v >= 1 ? v.toFixed(2) : v >= 0.01 || v === 0 ? v.toFixed(3) : v.toFixed(4));
 const pct = v => v == null || isNaN(v) ? "–" : (v * 100).toFixed(0) + "%";
 const num = (v, d = 0) => v == null || isNaN(v) ? "–" : Number(v).toLocaleString("en", { maximumFractionDigits: d });
 const sum = a => a.reduce((x, y) => x + y, 0);
