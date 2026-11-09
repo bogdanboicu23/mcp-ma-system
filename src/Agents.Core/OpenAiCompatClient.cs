@@ -36,6 +36,7 @@ public sealed record ProviderPreset(
 public sealed class OpenAiCompatClient : IModelClient
 {
     private const int MaxAttempts = 8;
+    private const int MalformedToolCallAttempts = 5;
 
     private readonly HttpClient _http;
     private readonly string _endpoint;
@@ -100,10 +101,20 @@ public sealed class OpenAiCompatClient : IModelClient
                 {
                     failure = $"{(int)response.StatusCode} from {_endpoint}: {Truncate(text)}" +
                               (response.StatusCode == HttpStatusCode.NotFound ? "  (model names change: run 'models --provider <name>' and pass --model <id>)" : string.Empty);
-                    var retryable = response.StatusCode == HttpStatusCode.TooManyRequests || (int)response.StatusCode >= 500;
+                    // "tool_use_failed": the provider could not parse the model's own tool call (a sampling glitch,
+                    // common with some open models). Asking again usually works, so it is retried a few times.
+                    var malformedToolCall = response.StatusCode == HttpStatusCode.BadRequest
+                                            && text.Contains("tool_use_failed", StringComparison.Ordinal);
+                    var retryable = response.StatusCode == HttpStatusCode.TooManyRequests || (int)response.StatusCode >= 500
+                                    || (malformedToolCall && attempt < MalformedToolCallAttempts);
                     if (!retryable)
                     {
                         throw new HttpRequestException(failure);
+                    }
+
+                    if (malformedToolCall)
+                    {
+                        wait = TimeSpan.FromSeconds(1);
                     }
 
                     if (response.Headers.RetryAfter?.Delta is { } delta)

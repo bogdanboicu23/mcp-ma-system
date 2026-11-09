@@ -112,6 +112,20 @@ public class OpenAiCompatTests
     }
 
     [Fact]
+    public async Task A_malformed_tool_call_rejected_by_the_provider_is_asked_again()
+    {
+        var broken = () => Json(HttpStatusCode.BadRequest, """{"error":{"message":"Failed to parse tool call arguments as JSON","code":"tool_use_failed"}}""");
+        var ok = () => Json(HttpStatusCode.OK, """{"choices":[{"finish_reason":"stop","message":{"content":"done"}}],"usage":{"prompt_tokens":5,"completion_tokens":1}}""");
+        var handler = new FakeHandler(broken, broken, ok);
+        var client = new OpenAiCompatClient("http://x", "m", null, http: new HttpClient(handler), delay: (_, _) => Task.CompletedTask);
+
+        var response = await client.SendAsync(SampleRequest());
+
+        Assert.Equal("end_turn", response.StopReason);
+        Assert.Equal(3, handler.Bodies.Count);
+    }
+
+    [Fact]
     public async Task Client_errors_are_not_retried_and_an_error_body_with_status_200_is_not_a_completion()
     {
         var bad = new OpenAiCompatClient("http://x", "m", null,
