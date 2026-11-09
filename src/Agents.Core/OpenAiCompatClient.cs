@@ -98,7 +98,8 @@ public sealed class OpenAiCompatClient : IModelClient
                 }
                 else
                 {
-                    failure = $"{(int)response.StatusCode} from {_endpoint}: {Truncate(text)}";
+                    failure = $"{(int)response.StatusCode} from {_endpoint}: {Truncate(text)}" +
+                              (response.StatusCode == HttpStatusCode.NotFound ? "  (model names change: run 'models --provider <name>' and pass --model <id>)" : string.Empty);
                     var retryable = response.StatusCode == HttpStatusCode.TooManyRequests || (int)response.StatusCode >= 500;
                     if (!retryable)
                     {

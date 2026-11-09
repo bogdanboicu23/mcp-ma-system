@@ -29,6 +29,7 @@ internal static class Cli
         Model:  --provider anthropic (default, paid) | openrouter | groq | ollama (free or local) | replay (no model, synthetic tasks, A/B only)
                 --model <id> --base-url <url> --api-key-env <NAME> --min-interval-ms <n>; non-Anthropic costs are notional (Haiku rates)
         Tools:  A = direct, B = single agent over MCP, C/D/E = MCP by default (--transport direct|mcp, --mcp-server <Mcp.Server.dll>)
+        models [--provider openrouter|groq|ollama] [--all]   list the models a provider offers now (default names go stale)
         ui     [--out results] [--port 5080]   local web UI over the results folder (read-only, offline)
         demo-data [--out results-demo]   write FAKE runs so the UI can be tried before any paid run
         mcp-check                        free: the MCP server and the direct host must return identical tool output
@@ -65,6 +66,7 @@ internal static class Cli
                 "eval" => await EvalAsync(args, cts.Token),
                 "report" => Report(args),
                 "ui" => await UiAsync(args, cts.Token),
+                "models" => await ModelsAsync(args, cts.Token),
                 "demo-data" => DemoDataCommand(args),
                 _ => PrintUsage(),
             };
@@ -153,6 +155,48 @@ internal static class Cli
         }
 
         await new Agents.Core.Ui.UiServer(store, args.Get("labels")).ServeAsync(port, ct);
+        return 0;
+    }
+
+    /// <summary>Lists the models a provider offers right now (names change often). OpenRouter: free models with tool support first.</summary>
+    private static async Task<int> ModelsAsync(CliArgs args, CancellationToken ct)
+    {
+        var preset = ProviderPreset.Find(args.Get("provider", "openrouter"));
+        var envName = args.Get("api-key-env", preset.ApiKeyEnv ?? string.Empty);
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        using var request = new HttpRequestMessage(HttpMethod.Get, args.Get("base-url", preset.BaseUrl).TrimEnd('/') + "/models");
+        if (envName.Length > 0 && Environment.GetEnvironmentVariable(envName) is { Length: > 0 } key)
+        {
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", key);
+        }
+
+        using var response = await http.SendAsync(request, ct);
+        var text = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            Console.Error.WriteLine($"{(int)response.StatusCode}: {text}");
+            return 1;
+        }
+
+        var rows = (JsonNode.Parse(text)?["data"] as JsonArray ?? new JsonArray()).Select(m =>
+        {
+            var id = m?["id"]?.GetValue<string>() ?? "?";
+            var prompt = m?["pricing"]?["prompt"]?.ToString();
+            var free = id.EndsWith(":free", StringComparison.Ordinal) || prompt is "0" or "0.0";
+            var tools = m?["supported_parameters"] is JsonArray p ? p.Any(x => x?.GetValue<string>() == "tools") : (bool?)null;
+            var context = m?["context_length"]?.ToString() ?? m?["context_window"]?.ToString() ?? "?";
+            return (Id: id, Free: free, Tools: tools, Context: context);
+        }).ToList();
+
+        var shown = args.Has("all") ? rows : rows.Where(r => preset.Name != "openrouter" || (r.Free && r.Tools != false)).ToList();
+        Console.WriteLine($"{preset.Name}: {rows.Count} models, showing {shown.Count}" +
+                          (preset.Name == "openrouter" && !args.Has("all") ? " (free, tool support; add --all for everything)" : string.Empty));
+        foreach (var r in shown.OrderBy(r => r.Id, StringComparer.Ordinal))
+        {
+            Console.WriteLine($"  {r.Id,-60} context {r.Context,-8} tools {(r.Tools is null ? "?" : r.Tools.Value ? "yes" : "no")}");
+        }
+
+        Console.WriteLine("Use one with: --provider " + preset.Name + " --model <id>   (pick a model with tool support)");
         return 0;
     }
 
