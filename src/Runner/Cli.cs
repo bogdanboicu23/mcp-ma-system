@@ -26,6 +26,8 @@ internal static class Cli
         Synthetic suite: add --synthetic [dir] to select, check, run, batch and eval (needs the image from tools/synthetic/Dockerfile)
         Common options: --tasks-file tasks/swebench_verified.jsonl  --out results  --model claude-haiku-5-5
         Limits (identical for all configs): --max-prompt-tokens 80000 --max-total-tokens 3000000 --max-cost 0.50 --max-turns 50
+        Model:  --provider anthropic (default, paid) | openrouter | groq | ollama (free or local) | replay (no model, synthetic tasks, A/B only)
+                --model <id> --base-url <url> --api-key-env <NAME> --min-interval-ms <n>; non-Anthropic costs are notional (Haiku rates)
         Tools:  A = direct, B = single agent over MCP, C/D/E = MCP by default (--transport direct|mcp, --mcp-server <Mcp.Server.dll>)
         ui     [--out results] [--port 5080]   local web UI over the results folder (read-only, offline)
         demo-data [--out results-demo]   write FAKE runs so the UI can be tried before any paid run
@@ -51,7 +53,9 @@ internal static class Cli
             return args.Command switch
             {
                 "dry" => await Smoke.RunAsync(live: false),
-                "live" => await Smoke.RunAsync(live: true),
+                "live" => await Smoke.RunAsync(
+                    live: true,
+                    args.Get("provider", "anthropic").Equals("anthropic", StringComparison.OrdinalIgnoreCase) ? null : RealModel(args)),
                 "select" => Select(args),
                 "label" => Label(args),
                 "check" => await CheckAsync(args, cts.Token),
@@ -469,17 +473,45 @@ internal static class Cli
             : null;
         var system = Configs.Create(config, prompts, limits, Hub(args), args.GetInt("rounds", 3), transport, mcp);
         IModelClient model = dry ? DryModel() : RealModel(args);
+        // Only Anthropic has real prices; for free, local and replay models the cost is notional (Haiku rates, no 100k tier).
+        var pricing = args.Get("provider", "anthropic").Equals("anthropic", StringComparison.OrdinalIgnoreCase) || dry ? null : Pricing.Notional;
         var environments = Environments(args);
         // Live runs measure each tool set's definition tokens once, exactly (free token-counting endpoint).
         var attributor = model is AnthropicHttpClient live && !args.Has("no-measure")
             ? new TokenAttributor(measureDefinitions: (tools, ct) => live.MeasureDefinitionsAsync(tools, ct))
-            : new TokenAttributor();
+            : new TokenAttributor(pricing);
         return new RunOrchestrator(
-            model, system, environments, StoreFor(args, dry), prompts, limits, await HarnessInfo.VersionAsync(), attributor);
+            model, system, environments, StoreFor(args, dry), prompts, limits, await HarnessInfo.VersionAsync(), attributor, pricing);
     }
 
-    private static IModelClient RealModel(CliArgs args)
+    /// <summary>
+    /// <c>--provider anthropic</c> (default, paid), <c>openrouter</c>, <c>groq</c>, <c>ollama</c> (OpenAI-compatible, free or local)
+    /// or <c>replay</c> (no model at all: replays the synthetic reference solutions, plumbing test only).
+    /// </summary>
+    internal static IModelClient RealModel(CliArgs args)
     {
+        var provider = args.Get("provider", "anthropic");
+        if (provider.Equals("replay", StringComparison.OrdinalIgnoreCase))
+        {
+            var suite = SyntheticDir(args.Has("synthetic") ? args : CliArgs.Parse(new[] { "x", "--synthetic" }));
+            return new ReplayModelClient(TaskLoader.Load(Path.Combine(suite, "tasks.jsonl")), suite);
+        }
+
+        if (!provider.Equals("anthropic", StringComparison.OrdinalIgnoreCase))
+        {
+            var preset = ProviderPreset.Find(provider);
+            var envName = args.Get("api-key-env", preset.ApiKeyEnv ?? string.Empty);
+            var apiKey = envName.Length == 0 ? null : Environment.GetEnvironmentVariable(envName);
+            if (envName.Length > 0 && string.IsNullOrWhiteSpace(apiKey))
+            {
+                throw new InvalidOperationException($"Set the {envName} environment variable first. {preset.Note}");
+            }
+
+            return new OpenAiCompatClient(
+                args.Get("base-url", preset.BaseUrl), args.Get("model", preset.DefaultModel), apiKey,
+                args.GetInt("min-interval-ms", preset.MinIntervalMs));
+        }
+
         var key = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
         if (string.IsNullOrWhiteSpace(key))
         {

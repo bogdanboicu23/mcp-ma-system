@@ -63,6 +63,19 @@ command. 72 offline unit tests.
 **The MCP projects have never been compiled.** NuGet was blocked where they were written. Build on the Mac first
 (`dotnet build`), fix any SDK API mismatch (version pinned in two csproj files), then run `dotnet run --project src/Runner -- mcp-check`.
 
+Free and local models (9 Nov): `--provider openrouter|groq|ollama` uses an OpenAI-compatible endpoint, `--provider replay` uses no model
+(it replays the synthetic reference solutions: plumbing test only, configs A/B). Keys come from `OPENROUTER_API_KEY` / `GROQ_API_KEY`
+(never commit them). Costs are then NOTIONAL (tokens at Haiku rates). Examples (synthetic suite, separate output folder):
+```
+dotnet run --project src/Runner -- live  --provider openrouter                       # one cheap call: does the key and tool calling work?
+dotnet run --project src/Runner -- batch --provider replay --synthetic --config A --ids-file tasks/synthetic/ids.txt --out results-replay
+dotnet run --project src/Runner -- batch --provider openrouter --synthetic --config A --limit 3 --max-turns 20 --out results-free
+dotnet run --project src/Runner -- batch --provider groq --model llama-3.3-70b-versatile --max-prompt-tokens 8000 --synthetic --config A --out results-free
+```
+Free tiers are rate limited (OpenRouter free: about 20 requests/minute and 50/day; Groq free has a small tokens-per-minute limit, so lower
+`--max-prompt-tokens`). The client paces calls (`--min-interval-ms`) and honours Retry-After, but a daily quota ends the batch; run the same
+command later, finished runs are skipped. Use ONE model for all configurations of a comparison.
+
 Results UI (read-only, offline, no extra packages): `dotnet run --project src/Runner -- ui` opens http://127.0.0.1:5080 with
 overview (resolve rate with Wilson intervals, cost per resolved task), cost split by source and the H2 fit, task structure
 (RQ3), a run browser with a per-call timeline and patch, the five designs and fairness checks. To try it with FAKE numbers

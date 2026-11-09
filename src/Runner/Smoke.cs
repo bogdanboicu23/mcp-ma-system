@@ -8,10 +8,14 @@ using Agents.Core;
 /// </summary>
 internal static class Smoke
 {
-    public static async Task<int> RunAsync(bool live)
+    public static async Task<int> RunAsync(bool live, IModelClient? provided = null)
     {
         IModelClient model;
-        if (live)
+        if (provided is not null)
+        {
+            model = provided;
+        }
+        else if (live)
         {
             var key = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
             if (string.IsNullOrWhiteSpace(key))
@@ -34,7 +38,7 @@ internal static class Smoke
 
         var run = new RunContext(
             $"smoke-{DateTime.UtcNow:yyyyMMdd-HHmmss}", "smoke", model,
-            new RunBudget(maxTotalTokens: 50_000, maxCostUsd: 0.05m),
+            new RunBudget(maxTotalTokens: 50_000, maxCostUsd: 0.05m, provided is null ? null : Pricing.Notional),
             new ContextPolicy(),
             new JsonlCallLog(Path.Combine("results", "smoke.jsonl")));
 

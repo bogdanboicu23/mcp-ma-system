@@ -20,6 +20,7 @@ public sealed record RunLimits(
 /// </summary>
 public sealed class RunOrchestrator
 {
+    private readonly Pricing? _pricing;
     private readonly IModelClient _model;
     private readonly ISystem _system;
     private readonly ITaskEnvironmentProvider _environments;
@@ -37,8 +38,10 @@ public sealed class RunOrchestrator
         PromptSet prompts,
         RunLimits limits,
         string harnessVersion,
-        TokenAttributor? attributor = null)
+        TokenAttributor? attributor = null,
+        Pricing? pricing = null)
     {
+        _pricing = pricing;
         _attributor = attributor ?? new TokenAttributor();
         _model = model;
         _system = system;
@@ -60,7 +63,7 @@ public sealed class RunOrchestrator
 
         Directory.CreateDirectory(dir);
 
-        var budget = new RunBudget(_limits.MaxTotalTokens, _limits.MaxCostUsd);
+        var budget = new RunBudget(_limits.MaxTotalTokens, _limits.MaxCostUsd, _pricing);
         var log = new AttributionTotals(new JsonlCallLog(Path.Combine(dir, "calls.jsonl")));
         var run = new RunContext(
             runId, _system.Config, _model, budget, new ContextPolicy(_limits.MaxPromptTokens), log, _attributor);

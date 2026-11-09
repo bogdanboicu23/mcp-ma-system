@@ -194,7 +194,7 @@ function viewOverview() {
   let h = `<div class="kpis">
     <div class="kpi"><b>${RUNS.length}</b><span>runs (${RUNS.filter(r => r.status !== "completed").length} infrastructure errors)</span></div>
     <div class="kpi"><b>${ev.length}</b><span>evaluated, ${ev.filter(r => r.resolved).length} resolved</span></div>
-    <div class="kpi"><b>${usd(spent)}</b><span>spent so far (budget about $100)</span></div>
+    <div class="kpi"><b>${usd(spent)}</b><span>${RUNS.some(r => r.model && !r.model.startsWith("claude")) ? "notional cost: tokens at Haiku rates, not money" : "spent so far (budget about $100)"}</span></div>
     <div class="kpi"><b>${new Set(RUNS.map(r => r.instanceId)).size}</b><span>distinct tasks</span></div></div>`;
   h += `<div class="two"><div class="card"><h2>Resolve rate (RQ1)</h2><p class="note">Share of evaluated runs that pass the hidden tests. Bars show the 95% Wilson interval; with few runs it is wide.</p>` +
     barChart({ items: st.map(s => ({ label: s.config, sub: s.evaluated + " runs", value: s.rate[0], lo: s.rate[1], hi: s.rate[2], color: color(s.config), tip: `${s.config}: ${s.resolved}/${s.evaluated} resolved` })), max: 1, fmt: pct }) + `</div>

@@ -17,6 +17,13 @@ public sealed record Pricing(
     /// <summary>Haiku 5.5, 5-minute cache writes.</summary>
     public static Pricing Haiku55 { get; } = new(0.10m, 0.50m, 0.01m, 0.125m, 100_000, 5m);
 
+    /// <summary>
+    /// Haiku 5.5 rates without the 100k tier, used for models that have no price of their own (free or local models).
+    /// The "cost" of a run is then a notional figure: tokens at Haiku prices. It keeps budgets and cost columns
+    /// comparable across configurations; it is not money spent.
+    /// </summary>
+    public static Pricing Notional { get; } = new(0.10m, 0.50m, 0.01m, 0.125m, long.MaxValue, 1m);
+
     /// <summary>1 normally, <see cref="HighTierMultiplier"/> when the prompt is above the tier threshold.</summary>
     public decimal Multiplier(Usage u) => u.PromptTokens > TierThreshold ? HighTierMultiplier : 1m;
 

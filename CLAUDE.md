@@ -55,6 +55,7 @@ conversation caching, `TaskLabeler` + `TaskSelector.SelectStratified`, synthetic
 (`src/Agents.Mcp`: `McpToolHost`, `McpToolHostFactory`), config B, `--transport direct|mcp`, `mcp-check`, `ToolHostTracker`.
 The MCP projects were NOT compiled (no NuGet in the sandbox): build them first on a dev machine.
 
+Model providers (9 Nov): `OpenAiCompatClient` + `ProviderPreset` (openrouter, groq, ollama), `ReplayModelClient`, `Pricing.Notional`, `--provider`. 82 offline tests.
 Results UI: `Agents.Core/Ui` (`UiServer` on HttpListener, embedded `index.html`, `DemoData` for fake runs), Runner `ui` and `demo-data`.
 
 Next, in order (details: `docs/implementation-plan.md`):
